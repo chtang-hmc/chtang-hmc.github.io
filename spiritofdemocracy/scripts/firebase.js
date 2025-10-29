@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, serverTimestamp, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { getFunctions, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
+import { getFunctions } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -27,9 +27,9 @@ if (location.hostname === "localhost") {
   try {
     connectAuthEmulator(auth, "http://localhost:9099");
     connectFirestoreEmulator(db, "localhost", 8080);
-    connectFunctionsEmulator(functions, "localhost", 5001);
-    // eslint-disable-next-line no-console
-    console.log("Connected to Firebase emulators (auth:9099, firestore:8080, functions:5001)");
+    // For Vertex AI-backed callable, prefer deployed Functions in dev
+    // connectFunctionsEmulator(functions, "localhost", 5001);
+    // console.log("Connected to Firebase emulators (auth:9099, firestore:8080)");
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("Failed to connect to emulators:", e);
