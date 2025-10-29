@@ -29,8 +29,8 @@ async function renderFeed(variant) {
 async function renderPostCard(post) {
   const likedKey = `liked_${post.id}`;
   const repostedKey = `reposted_${post.id}`;
-  const liked = localStorage.getItem(likedKey) === "1";
-  const reposted = localStorage.getItem(repostedKey) === "1";
+  const liked = sessionStorage.getItem(likedKey) === "1";
+  const reposted = sessionStorage.getItem(repostedKey) === "1";
 
   const card = h("div", { class: "card" },
     h("div", { class: "avatar" }),
@@ -62,20 +62,22 @@ function mediaEl(post) {
 }
 
 function likeBtn(postId, liked) {
-  return h("button", { class: "btn", "aria-pressed": liked ? "true" : "false", onClick: async () => {
-    const next = !(localStorage.getItem(`liked_${postId}`) === "1");
-    localStorage.setItem(`liked_${postId}`, next ? "1" : "0");
+  return h("button", { class: "btn", "aria-pressed": liked ? "true" : "false", onClick: async (e) => {
+    const key = `liked_${postId}`;
+    const next = !(sessionStorage.getItem(key) === "1");
+    sessionStorage.setItem(key, next ? "1" : "0");
     await writeInteraction(session.sessionId, postId, { liked: next });
-    event.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+    e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
   } }, "Like");
 }
 
 function repostBtn(postId, reposted) {
-  return h("button", { class: "btn", "aria-pressed": reposted ? "true" : "false", onClick: async () => {
-    const next = !(localStorage.getItem(`reposted_${postId}`) === "1");
-    localStorage.setItem(`reposted_${postId}`, next ? "1" : "0");
+  return h("button", { class: "btn", "aria-pressed": reposted ? "true" : "false", onClick: async (e) => {
+    const key = `reposted_${postId}`;
+    const next = !(sessionStorage.getItem(key) === "1");
+    sessionStorage.setItem(key, next ? "1" : "0");
     await writeInteraction(session.sessionId, postId, { reposted: next });
-    event.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+    e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
   } }, "Repost");
 }
 
