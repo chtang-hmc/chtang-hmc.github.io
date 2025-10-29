@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if false;
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn() && (
+          (request.resource.data.source == 'user' && request.resource.data.sessionId == request.auth.uid)
+        );
+        allow update, delete: if false;
+      }
+    }
+
+    match /sessions/{sessionId} {
+      allow create: if isSignedIn() && sessionId == request.auth.uid;
+      allow update, read: if isSignedIn() && sessionId == request.auth.uid;
+    }
+
+    match /sessions/{sessionId}/interactions/{pid} {
+      allow create, update: if isSignedIn() && sessionId == request.auth.uid;
+      allow read: if isSignedIn() && sessionId == request.auth.uid;
+    }
+
+    match /polls/{sessionId} {
+      allow create: if isSignedIn() && sessionId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+  }
+}
+
+

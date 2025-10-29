@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spirit of Democracy</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Spirit of Democracy</h1>
+    <div id="variant-label" class="variant-label"></div>
+    <div id="countdown" class="countdown" aria-live="polite">03:00</div>
+  </header>
+
+  <main id="app">
+    <div id="feed" class="feed"></div>
+  </main>
+
+  <div id="poll-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="poll-title">
+    <div class="modal-content">
+      <h2 id="poll-title">Quick Question</h2>
+      <p>Do you think items at the British Museum obtained during the colonial period should be returned to their original countries?</p>
+      <form id="poll-form">
+        <label class="radio"><input type="radio" name="answer" value="yes" required> Yes</label>
+        <label class="radio"><input type="radio" name="answer" value="no"> No</label>
+        <label class="radio"><input type="radio" name="answer" value="maybe"> Maybe</label>
+        <div class="modal-actions">
+          <button type="submit" class="btn primary">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/firebase.js"></script>
+  <script type="module" src="./scripts/router.js"></script>
+  <script type="module" src="./scripts/api.js"></script>
+  <script type="module" src="./scripts/timer.js"></script>
+  <script type="module" src="./scripts/feed.js"></script>
+</body>
+</html>
+
+

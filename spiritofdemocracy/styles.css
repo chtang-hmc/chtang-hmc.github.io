@@ -1,0 +1,32 @@
+:root { --bg:#0f1419; --card:#15202b; --text:#e6ecf0; --muted:#8899a6; --accent:#1d9bf0; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+.app-header { position:sticky; top:0; z-index:5; background:rgba(21,32,43,0.9); backdrop-filter: blur(8px); display:flex; align-items:center; gap:16px; padding:12px 16px; border-bottom:1px solid #22303c; }
+.app-header h1 { font-size:18px; margin:0; }
+.variant-label { margin-left:auto; padding:2px 8px; border-radius:999px; border:1px solid #22303c; color:var(--muted); }
+.countdown { font-variant-numeric: tabular-nums; padding:2px 8px; border-radius:6px; background:#0b1117; border:1px solid #22303c; }
+
+.feed { max-width:700px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.card { background:var(--card); border:1px solid #22303c; border-radius:12px; padding:12px; display:flex; gap:12px; }
+.avatar { width:44px; height:44px; border-radius:50%; background:#0b1117; border:1px solid #22303c; flex:0 0 auto; }
+.content { flex:1; min-width:0; }
+.meta { color:var(--muted); font-size:12px; margin-bottom:6px; display:flex; gap:8px; align-items:center; }
+.text { white-space:pre-wrap; line-height:1.4; }
+.media { border-radius:12px; overflow:hidden; margin-top:8px; border:1px solid #22303c; }
+.media img, .media video { width:100%; display:block; }
+.actions { display:flex; gap:8px; margin-top:8px; }
+.btn { background:transparent; color:var(--muted); border:1px solid #22303c; border-radius:999px; padding:6px 10px; cursor:pointer; }
+.btn.primary { color:white; background:var(--accent); border-color:transparent; }
+.btn[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+.counter { color:var(--muted); font-size:12px; margin-left:4px; }
+
+.modal { position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,0.5); }
+.modal.hidden { display:none; }
+.modal-content { width:100%; max-width:520px; background:var(--card); color:var(--text); border:1px solid #22303c; border-radius:12px; padding:16px; }
+.modal-actions { margin-top:12px; display:flex; justify-content:flex-end; gap:8px; }
+.radio { display:block; margin-top:8px; }
+
+.comment { margin-top:8px; padding:8px; border-radius:8px; background:#0b1117; border:1px solid #22303c; }
+.comment .src { font-size:11px; color:var(--muted); }
+
+

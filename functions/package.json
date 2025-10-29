@@ -1,0 +1,22 @@
+{
+  "name": "spirit-of-democracy-functions",
+  "version": "0.1.0",
+  "engines": {
+    "node": "20"
+  },
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "deploy": "npm run build"
+  },
+  "dependencies": {
+    "@google-cloud/vertexai": "^1.4.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
