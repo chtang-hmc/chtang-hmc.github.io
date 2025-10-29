@@ -124,7 +124,8 @@ async function main() {
   applyRoute(variant);
   session = await ensureAnonymousSession(() => variant);
   await renderFeed(session.variant);
-  startTimer(3 * 60 * 1000);
+  const durationMs = location.hostname === "localhost" ? 30 * 1000 : 3 * 60 * 1000;
+  startTimer(durationMs);
   onTimerEnd(() => {
     const modal = document.getElementById("poll-modal");
     modal.classList.remove("hidden");
