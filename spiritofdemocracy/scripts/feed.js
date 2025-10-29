@@ -64,22 +64,24 @@ function mediaEl(post) {
 }
 
 function likeBtn(postId, liked) {
-  return h("button", { class: "btn", "aria-pressed": liked ? "true" : "false", onClick: async (e) => {
+  return h("button", { class: "btn" + (liked ? " active" : ""), "aria-pressed": liked ? "true" : "false", onClick: async (e) => {
     const key = `liked_${postId}`;
     const next = !(sessionStorage.getItem(key) === "1");
     sessionStorage.setItem(key, next ? "1" : "0");
     await writeInteraction(session.sessionId, postId, { liked: next });
     e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+    e.currentTarget.classList.toggle("active", next);
   } }, "Like");
 }
 
 function repostBtn(postId, reposted) {
-  return h("button", { class: "btn", "aria-pressed": reposted ? "true" : "false", onClick: async (e) => {
+  return h("button", { class: "btn" + (reposted ? " active" : ""), "aria-pressed": reposted ? "true" : "false", onClick: async (e) => {
     const key = `reposted_${postId}`;
     const next = !(sessionStorage.getItem(key) === "1");
     sessionStorage.setItem(key, next ? "1" : "0");
     await writeInteraction(session.sessionId, postId, { reposted: next });
     e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+    e.currentTarget.classList.toggle("active", next);
   } }, "Repost");
 }
 
@@ -102,9 +104,20 @@ function commentForm(postId) {
   send.addEventListener("click", async () => {
     const text = (input.value || "").trim();
     if (!text) return;
-    await addUserComment(postId, session.sessionId, text);
+    // optimistic UI
+    const container = document.getElementById(`comments_${postId}`);
+    if (container) {
+      container.appendChild(h("div", { class: "comment" },
+        h("div", { class: "src" }, "User"),
+        h("div", {}, text)
+      ));
+    }
     input.value = "";
-    await refreshComments(postId);
+    try {
+      await addUserComment(postId, session.sessionId, text);
+    } catch (e) {
+      console.error(e);
+    }
   });
   return row;
 }
