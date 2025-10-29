@@ -50,7 +50,17 @@ export async function loadAllInteractions(sessionId) {
 
 export function subscribeComments(postId, callback) {
   const ref = collection(db, `posts/${postId}/comments`);
-  return onSnapshot(ref, (snap) => {
+  // Prime UI with a one-time read to ensure existing comments render on load
+  getDocs(ref).then((snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
+      const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return ta - tb;
+    });
+    callback(items);
+  }).catch(() => {});
+  // Live updates thereafter
+  return onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
       const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
       const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
