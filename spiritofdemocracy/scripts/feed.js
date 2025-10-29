@@ -51,6 +51,7 @@ async function renderPostCard(post) {
   );
 
   setupCommentsSubscription(post.id);
+  await refreshComments(post.id);
   return card;
 }
 
@@ -119,6 +120,7 @@ function commentForm(postId) {
     input.value = "";
     try {
       await addUserComment(postId, session.sessionId, text);
+      await refreshComments(postId);
     } catch (e) {
       console.error(e);
     }
@@ -139,6 +141,20 @@ function setupCommentsSubscription(postId) {
       container.appendChild(el);
     }
   });
+}
+
+async function refreshComments(postId) {
+  const container = document.getElementById(`comments_${postId}`);
+  if (!container) return;
+  const comments = await listComments(postId);
+  container.innerHTML = "";
+  for (const c of comments) {
+    const el = h("div", { class: "comment" },
+      h("div", { class: "src" }, c.source === "gemini" ? "AI" : "User"),
+      h("div", {}, c.text || "")
+    );
+    container.appendChild(el);
+  }
 }
 
 async function main() {
