@@ -14,9 +14,9 @@ export async function writeInteraction(sessionId, postId, updates) {
   await setDoc(ref, { ...updates, updatedAt: serverTimestamp() }, { merge: true });
 }
 
-export async function submitPoll(sessionId, variant, answer) {
-  const pollRef = doc(db, "polls", sessionId);
-  await setDoc(pollRef, { variant, answer, submittedAt: serverTimestamp() }, { merge: false });
+export async function submitPoll(ownerUid, variant, answer) {
+  const coll = collection(db, "polls");
+  await addDoc(coll, { ownerUid, variant, answer, submittedAt: serverTimestamp() });
 }
 
 export async function addUserComment(postId, sessionId, text) {
