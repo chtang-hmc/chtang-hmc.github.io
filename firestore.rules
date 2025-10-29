@@ -25,8 +25,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && sessionId == request.auth.uid;
     }
 
-    match /polls/{sessionId} {
-      allow create: if isSignedIn() && sessionId == request.auth.uid;
+    match /polls/{pollId} {
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
       allow read, update, delete: if false;
     }
   }

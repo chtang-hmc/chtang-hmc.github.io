@@ -1,5 +1,5 @@
 import { submitPoll } from "./api.js";
-import { ensureAnonymousSession } from "./firebase.js";
+import { auth } from "./firebase.js";
 
 let endAt = 0;
 let intervalId = null;
@@ -37,11 +37,16 @@ async function onSubmitPoll(e) {
   const fd = new FormData(e.currentTarget);
   const answer = fd.get("answer");
   const variant = localStorage.getItem("sod_variant") || "mixed";
-  const sess = await ensureAnonymousSession(() => variant);
-  await submitPoll(sess.sessionId, variant, answer);
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  await submitPoll(uid, variant, answer);
   const modal = document.getElementById("poll-modal");
   modal.classList.add("hidden");
   disableInteractions();
+  // Redirect to thank you page
+  setTimeout(() => {
+    window.location.href = "./thanks.html";
+  }, 300);
 }
 
 function disableInteractions() {

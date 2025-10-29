@@ -1,9 +1,10 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
+let interactionsByPostId = {};
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -29,8 +30,9 @@ async function renderFeed(variant) {
 async function renderPostCard(post) {
   const likedKey = `liked_${post.id}`;
   const repostedKey = `reposted_${post.id}`;
-  const liked = localStorage.getItem(likedKey) === "1";
-  const reposted = localStorage.getItem(repostedKey) === "1";
+  const initial = interactionsByPostId[post.id] || {};
+  const liked = initial.liked === true || sessionStorage.getItem(likedKey) === "1";
+  const reposted = initial.reposted === true || sessionStorage.getItem(repostedKey) === "1";
 
   const card = h("div", { class: "card" },
     h("div", { class: "avatar" }),
@@ -48,6 +50,7 @@ async function renderPostCard(post) {
     )
   );
 
+  setupCommentsSubscription(post.id);
   await refreshComments(post.id);
   return card;
 }
@@ -62,20 +65,28 @@ function mediaEl(post) {
 }
 
 function likeBtn(postId, liked) {
-  return h("button", { class: "btn", "aria-pressed": liked ? "true" : "false", onClick: async () => {
-    const next = !(localStorage.getItem(`liked_${postId}`) === "1");
-    localStorage.setItem(`liked_${postId}`, next ? "1" : "0");
-    await writeInteraction(session.sessionId, postId, { liked: next });
-    event.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+  return h("button", { class: "btn" + (liked ? " active" : ""), "aria-pressed": liked ? "true" : "false", onClick: async (e) => {
+    const key = `liked_${postId}`;
+    const next = !(sessionStorage.getItem(key) === "1");
+    // immediate UI
+    e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+    e.currentTarget.classList.toggle("active", next);
+    sessionStorage.setItem(key, next ? "1" : "0");
+    // backend write (fire and forget)
+    try { await writeInteraction(session.sessionId, postId, { liked: next }); } catch {}
   } }, "Like");
 }
 
 function repostBtn(postId, reposted) {
-  return h("button", { class: "btn", "aria-pressed": reposted ? "true" : "false", onClick: async () => {
-    const next = !(localStorage.getItem(`reposted_${postId}`) === "1");
-    localStorage.setItem(`reposted_${postId}`, next ? "1" : "0");
-    await writeInteraction(session.sessionId, postId, { reposted: next });
-    event.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+  return h("button", { class: "btn" + (reposted ? " active" : ""), "aria-pressed": reposted ? "true" : "false", onClick: async (e) => {
+    const key = `reposted_${postId}`;
+    const next = !(sessionStorage.getItem(key) === "1");
+    // immediate UI
+    e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+    e.currentTarget.classList.toggle("active", next);
+    sessionStorage.setItem(key, next ? "1" : "0");
+    // backend write (fire and forget)
+    try { await writeInteraction(session.sessionId, postId, { reposted: next }); } catch {}
   } }, "Repost");
 }
 
@@ -98,11 +109,38 @@ function commentForm(postId) {
   send.addEventListener("click", async () => {
     const text = (input.value || "").trim();
     if (!text) return;
-    await addUserComment(postId, session.sessionId, text);
+    // optimistic UI
+    const container = document.getElementById(`comments_${postId}`);
+    if (container) {
+      container.appendChild(h("div", { class: "comment" },
+        h("div", { class: "src" }, "User"),
+        h("div", {}, text)
+      ));
+    }
     input.value = "";
-    await refreshComments(postId);
+    try {
+      await addUserComment(postId, session.sessionId, text);
+      await refreshComments(postId);
+    } catch (e) {
+      console.error(e);
+    }
   });
   return row;
+}
+
+function setupCommentsSubscription(postId) {
+  const container = document.getElementById(`comments_${postId}`);
+  if (!container) return;
+  subscribeComments(postId, (comments) => {
+    container.innerHTML = "";
+    for (const c of comments) {
+      const el = h("div", { class: "comment" },
+        h("div", { class: "src" }, c.source === "gemini" ? "AI" : "User"),
+        h("div", {}, c.text || "")
+      );
+      container.appendChild(el);
+    }
+  });
 }
 
 async function refreshComments(postId) {
@@ -123,8 +161,10 @@ async function main() {
   const variant = resolveVariant();
   applyRoute(variant);
   session = await ensureAnonymousSession(() => variant);
+  interactionsByPostId = await loadAllInteractions(session.sessionId);
   await renderFeed(session.variant);
-  startTimer(3 * 60 * 1000);
+  const durationMs = location.hostname === "localhost" ? 30 * 1000 : 3 * 60 * 1000;
+  startTimer(durationMs);
   onTimerEnd(() => {
     const modal = document.getElementById("poll-modal");
     modal.classList.remove("hidden");
