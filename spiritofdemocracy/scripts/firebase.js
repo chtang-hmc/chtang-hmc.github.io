@@ -1,8 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";git add .gitignore .
-git commit -m "Add project-level .gitignore for Firebase/Functions"
-git push
+import { getAnalytics } from "firebase/analytics";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
