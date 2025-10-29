@@ -67,10 +67,12 @@ function likeBtn(postId, liked) {
   return h("button", { class: "btn" + (liked ? " active" : ""), "aria-pressed": liked ? "true" : "false", onClick: async (e) => {
     const key = `liked_${postId}`;
     const next = !(sessionStorage.getItem(key) === "1");
-    sessionStorage.setItem(key, next ? "1" : "0");
-    await writeInteraction(session.sessionId, postId, { liked: next });
+    // immediate UI
     e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
     e.currentTarget.classList.toggle("active", next);
+    sessionStorage.setItem(key, next ? "1" : "0");
+    // backend write (fire and forget)
+    try { await writeInteraction(session.sessionId, postId, { liked: next }); } catch {}
   } }, "Like");
 }
 
@@ -78,10 +80,12 @@ function repostBtn(postId, reposted) {
   return h("button", { class: "btn" + (reposted ? " active" : ""), "aria-pressed": reposted ? "true" : "false", onClick: async (e) => {
     const key = `reposted_${postId}`;
     const next = !(sessionStorage.getItem(key) === "1");
-    sessionStorage.setItem(key, next ? "1" : "0");
-    await writeInteraction(session.sessionId, postId, { reposted: next });
+    // immediate UI
     e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
     e.currentTarget.classList.toggle("active", next);
+    sessionStorage.setItem(key, next ? "1" : "0");
+    // backend write (fire and forget)
+    try { await writeInteraction(session.sessionId, postId, { reposted: next }); } catch {}
   } }, "Repost");
 }
 

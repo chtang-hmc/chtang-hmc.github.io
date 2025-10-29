@@ -1,6 +1,6 @@
 import { auth, db, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 export async function loadPostsForVariant(variant) {
   // For low traffic and simplicity, load from bundled JSON and filter.
@@ -25,9 +25,13 @@ export async function addUserComment(postId, sessionId, text) {
 }
 
 export async function listComments(postId) {
-  const ref = query(collection(db, `posts/${postId}/comments`), orderBy("createdAt", "asc"));
+  const ref = collection(db, `posts/${postId}/comments`);
   const qs = await getDocs(ref);
-  return qs.docs.map(d => ({ id: d.id, ...d.data() }));
+  return qs.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
+    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return ta - tb;
+  });
 }
 
 export async function generateComments(postId, count = 3) {
@@ -45,9 +49,13 @@ export async function loadAllInteractions(sessionId) {
 }
 
 export function subscribeComments(postId, callback) {
-  const ref = query(collection(db, `posts/${postId}/comments`), orderBy("createdAt", "asc"));
+  const ref = collection(db, `posts/${postId}/comments`);
   return onSnapshot(ref, (snap) => {
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
+      const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return ta - tb;
+    });
     callback(items);
   });
 }
