@@ -1,9 +1,10 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
+let interactionsByPostId = {};
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -29,8 +30,9 @@ async function renderFeed(variant) {
 async function renderPostCard(post) {
   const likedKey = `liked_${post.id}`;
   const repostedKey = `reposted_${post.id}`;
-  const liked = sessionStorage.getItem(likedKey) === "1";
-  const reposted = sessionStorage.getItem(repostedKey) === "1";
+  const initial = interactionsByPostId[post.id] || {};
+  const liked = initial.liked === true || sessionStorage.getItem(likedKey) === "1";
+  const reposted = initial.reposted === true || sessionStorage.getItem(repostedKey) === "1";
 
   const card = h("div", { class: "card" },
     h("div", { class: "avatar" }),
@@ -48,7 +50,7 @@ async function renderPostCard(post) {
     )
   );
 
-  await refreshComments(post.id);
+  setupCommentsSubscription(post.id);
   return card;
 }
 
@@ -107,24 +109,26 @@ function commentForm(postId) {
   return row;
 }
 
-async function refreshComments(postId) {
+function setupCommentsSubscription(postId) {
   const container = document.getElementById(`comments_${postId}`);
   if (!container) return;
-  const comments = await listComments(postId);
-  container.innerHTML = "";
-  for (const c of comments) {
-    const el = h("div", { class: "comment" },
-      h("div", { class: "src" }, c.source === "gemini" ? "AI" : "User"),
-      h("div", {}, c.text || "")
-    );
-    container.appendChild(el);
-  }
+  subscribeComments(postId, (comments) => {
+    container.innerHTML = "";
+    for (const c of comments) {
+      const el = h("div", { class: "comment" },
+        h("div", { class: "src" }, c.source === "gemini" ? "AI" : "User"),
+        h("div", {}, c.text || "")
+      );
+      container.appendChild(el);
+    }
+  });
 }
 
 async function main() {
   const variant = resolveVariant();
   applyRoute(variant);
   session = await ensureAnonymousSession(() => variant);
+  interactionsByPostId = await loadAllInteractions(session.sessionId);
   await renderFeed(session.variant);
   const durationMs = location.hostname === "localhost" ? 30 * 1000 : 3 * 60 * 1000;
   startTimer(durationMs);
