@@ -60,7 +60,7 @@ export function subscribeComments(postId, callback) {
     callback(items);
   }).catch(() => {});
   // Live updates thereafter
-  return onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
+  return onSnapshot(ref, (snap) => {
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
       const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
       const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;

@@ -50,8 +50,8 @@ async function renderPostCard(post) {
     )
   );
 
-  setupCommentsSubscription(post.id);
   await refreshComments(post.id);
+  setupCommentsSubscription(post.id);
   return card;
 }
 
