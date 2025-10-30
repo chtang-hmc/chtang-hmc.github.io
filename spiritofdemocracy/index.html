@@ -37,6 +37,33 @@
   <script type="module" src="./scripts/api.js"></script>
   <script type="module" src="./scripts/timer.js"></script>
   <script type="module" src="./scripts/feed.js"></script>
+
+  <!-- Floating new post button -->
+  <button id="fab-new-post" title="New Post" style="position:fixed;bottom:32px;right:32px;z-index:20;border:none;background:#1d9bf0;color:#fff;width:62px;height:62px;border-radius:50%;box-shadow:0 2px 16px rgba(29,155,209,0.10);font-size:2em;line-height:1.2;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.13s;">
+    ＋
+  </button>
+  <!-- Modal for new post (hidden by default) -->
+  <div id="modal-new-post" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width:520px;">
+      <h2 style="margin-bottom:0;font-size:1.25em;color:#1d9bf0;font-weight:700;">New Post</h2>
+      <form id="new-post-form">
+        <label for="post-text" style="display:block;margin:.9em 0 .15em;font-weight:500;">What's happening?</label>
+        <textarea id="post-text" rows="3" maxlength="420" required placeholder="Write your tweet…" style="width:100%;font-size:1.15em;border-radius:12px;padding:10px;border:1.5px solid #d0dbe6;resize:vertical;"></textarea>
+        <div style="margin-top:10px;">
+          <label style="font-size:.98em;font-weight:500;">Media:
+            <input id="post-media" type="file" style="display:block;font-size:.97em;margin-top:4px;" accept="image/*,video/mp4,video/webm,image/gif">
+          </label>
+        </div>
+        <div style="margin-top:8px;font-size:1em;">or
+          <input id="post-media-url" type="text" placeholder="YouTube link (optional)" style="width:94%;margin-top:5px;font-size:.99em;border-radius:8px;border:1.5px solid #d0dbe6;padding:5px 8px;"> </div>
+        <div id="post-media-preview" style="margin-top:8px;"></div>
+        <div class="modal-actions" style="margin-top:18px;">
+          <button type="button" id="cancel-new-post" class="btn">Cancel</button>
+          <button type="submit" class="btn primary" style="min-width:88px;">Post</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </body>
 </html>
 

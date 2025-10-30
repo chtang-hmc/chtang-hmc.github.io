@@ -1,6 +1,6 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
@@ -281,5 +281,70 @@ async function main() {
 }
 
 window.addEventListener("DOMContentLoaded", main);
+
+const FAB = document.getElementById("fab-new-post");
+const modal = document.getElementById("modal-new-post");
+const form = document.getElementById("new-post-form");
+const fileInput = document.getElementById("post-media");
+const urlInput = document.getElementById("post-media-url");
+const closeBtn = document.getElementById("cancel-new-post");
+const preview = document.getElementById("post-media-preview");
+
+if(FAB) FAB.onclick = () => { modal.classList.remove("hidden"); };
+if(closeBtn) closeBtn.onclick = () => { modal.classList.add("hidden"); resetNewPostModal(); };
+function resetNewPostModal() {
+  form.reset(); preview.innerHTML = ""; fileInput.value = ""; urlInput.value = ""; uploadedUrl = null; fileTypeHint = null;
+}
+let uploadedUrl = null;
+let fileTypeHint = null;
+if(fileInput) fileInput.onchange = async (e) => {
+  preview.innerHTML = ""; uploadedUrl = null; fileTypeHint = null;
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const type = file.type.startsWith("image") ? "image" : (file.type.startsWith("video") ? "video" : file.type === "image/gif" ? "gif" : null);
+  if (!type) { preview.innerHTML = "<span style='color:red'>Unsupported type</span>"; return; }
+  preview.innerHTML = "Uploading...";
+  try {
+    fileTypeHint = type;
+    uploadedUrl = await uploadMediaFile(file, session.sessionId);
+    if(type==="image" || type==="gif") preview.innerHTML = `<img src='${uploadedUrl}'>`;
+    else if(type==="video") preview.innerHTML = `<video src='${uploadedUrl}' controls>`;
+  } catch(e) { preview.innerHTML = `<span style='color:red'>${e.message}</span>`; uploadedUrl = null; }
+};
+if(urlInput) urlInput.oninput = () => {
+  preview.innerHTML = ""; if(urlInput.value) fileInput.value=""; uploadedUrl = null; fileTypeHint = null;
+  const url = urlInput.value.trim();
+  if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+    preview.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${toYoutubeEmbed(url)}' frameborder='0' allowfullscreen></iframe>`;
+    uploadedUrl = toYoutubeEmbed(url); fileTypeHint = "youtube";
+  }
+}
+function toYoutubeEmbed(url) {
+  // Convert normal Youtube link to embed form
+  let vid = url.match(/(?:v=|youtu.be\/)([\w-]+)/);
+  if(!vid) return url;
+  return `https://www.youtube.com/embed/${vid[1]}`;
+}
+if(form) form.onsubmit = async (e) => {
+  e.preventDefault();
+  // Ensure text or media is present
+  const text = document.getElementById("post-text").value.trim();
+  if (!text) { alert("Post text required"); return; }
+  let mediaUrl = uploadedUrl;
+  let mediaType = fileTypeHint;
+  if(!mediaUrl) { mediaType = "text"; }
+  // Author and stance
+  const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
+  const stance = session && session.variant ? session.variant : "mixed";
+  try {
+    await createPost({ text, mediaUrl, mediaType, author, stance });
+    modal.classList.add("hidden"); resetNewPostModal();
+    // re-render feed to show new post
+    const variant = localStorage.getItem("sod_variant") || "mixed";
+    renderFeed(variant);
+  } catch(e) {
+    alert("Failed to publish post: " + e.message);
+  }
+};
 
 
