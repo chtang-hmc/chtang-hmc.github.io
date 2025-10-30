@@ -133,12 +133,30 @@ async function renderRepostCard(originalPost) {
 }
 
 function mediaEl(post) {
-  if (post.type === "video") {
+  // Render YouTube/Shorts if link
+  if ((post.mediaType === "youtube") || (typeof post.mediaUrl === "string" && post.mediaUrl.includes("youtube.com/embed"))) {
+    // eslint-disable-next-line
+    return h("div", { class: "media" },
+      h("iframe", {
+        src: post.mediaUrl,
+        width: "100%",
+        style: "aspect-ratio:16/9;border-radius:12px;border:1.5px solid #e6ecf0;",
+        frameborder: "0",
+        allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+        allowfullscreen: true
+      })
+    );
+  }
+  if (post.mediaType === "video" || (post.mediaUrl && /\.mp4|\.webm$/.test(post.mediaUrl))) {
     const v = h("video", { controls: true });
     v.appendChild(h("source", { src: post.mediaUrl }));
     return h("div", { class: "media" }, v);
   }
-  return h("div", { class: "media" }, h("img", { src: post.mediaUrl, alt: "" }));
+  if (post.mediaUrl) {
+    // Default to image (includes gif)
+    return h("div", { class: "media" }, h("img", { src: post.mediaUrl, alt: "" }));
+  }
+  return null;
 }
 
 function likeBtn(postId, liked) {
