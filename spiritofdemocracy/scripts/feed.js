@@ -1,6 +1,6 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost, getPostLikeRepostCounts, subscribeToPostsForVariant } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost, getPostLikeRepostCounts, subscribeToPostsForVariant, createRepost, deleteRepostByAuthor } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
@@ -22,19 +22,19 @@ async function showPosts(posts) {
   if (!container) return;
   container.innerHTML = "";
   repostedIds = loadReposts(); // session repost ids
-  // Display normal posts
+  // First, render all post cards (without waiting for comments)
+  const postCards = [];
   for (const post of posts) {
-    container.appendChild(await renderPostCard(post));
-  }
-  // Session-local reposts (bottom)
-  for (const postId of repostedIds) {
-    const post = posts.find(p => p.id === postId);
-    if (post) {
-      container.appendChild(await renderRepostCard(post));
-    }
+    const card = await renderPostCard(post, false); // false = don't load comments yet
+    container.appendChild(card);
+    postCards.push(post);
   }
   // Update all visible .posttime spans now
   updateVisibleTimes();
+  // Now batch-load all comments in parallel
+  await Promise.all(postCards.map(post => refreshComments(post.id)));
+  // Set up subscriptions for all posts
+  postCards.forEach(post => setupCommentsSubscription(post.id));
 }
 
 function h(tag, attrs = {}, ...children) {
@@ -78,17 +78,23 @@ async function renderFeed(variant) {
   container.innerHTML = "";
   const posts = await loadPostsForVariant(variant);
   repostedIds = loadReposts(); // load current session repost ids
-  // Normal posts
+  // First, render all post cards (without waiting for comments)
+  const postCards = [];
   for (const post of posts) {
-    container.appendChild(await renderPostCard(post));
+    container.appendChild(await renderPostCard(post, false));
+    postCards.push(post);
   }
-  // Session-local reposts (fake cards at bottom)
+  // Session-local reposts (fake cards at bottom) - legacy, may not be needed with public reposts
   for (const postId of repostedIds) {
     const post = posts.find(p => p.id === postId);
     if (post) {
       container.appendChild(await renderRepostCard(post));
     }
   }
+  // Batch-load all comments in parallel
+  await Promise.all(postCards.map(post => refreshComments(post.id)));
+  // Set up subscriptions for all posts
+  postCards.forEach(post => setupCommentsSubscription(post.id));
 }
 
 function getPostTime(post) {
@@ -122,7 +128,11 @@ function updateVisibleTimes() {
 setInterval(updateVisibleTimes, 20000);
 window.__staticPostOffset = 1;
 
-async function renderPostCard(post) {
+async function renderPostCard(post, loadComments = true) {
+  // Public repost rendering
+  if (post.type === "repost" && post.repostOriginal) {
+    return await renderRepostCardPublic(post);
+  }
   const likedKey = `liked_${post.id}`;
   const repostedKey = `reposted_${post.id}`;
   const initial = interactionsByPostId[post.id] || {};
@@ -159,8 +169,10 @@ async function renderPostCard(post) {
     )
   );
 
-  await refreshComments(post.id);
-  setupCommentsSubscription(post.id);
+  if (loadComments) {
+    await refreshComments(post.id);
+    setupCommentsSubscription(post.id);
+  }
   // After rendering, fetch counts
   setTimeout(() => updateLikeRepostCounts(post.id), 0);
   return card;
@@ -190,6 +202,35 @@ async function renderRepostCard(originalPost) {
         h("span", { class: "displayName" }, youName),
         h("span", { class: "handle" }, youHandle),
         h("span", { class: "time", style: "color:#2cbeff;padding-left:5px;" }, "· Reposted by you")
+      ),
+      h("div", { style: "margin:8px 0 0 0;" }, quoteCard)
+    )
+  );
+  return card;
+}
+
+async function renderRepostCardPublic(repostPost) {
+  const originalPost = repostPost.repostOriginal || {};
+  const reposterName = displayNameFromAuthor(repostPost.author);
+  const reposterHandle = handleFromAuthor(repostPost.author);
+  const quoteCard = h("div", { class: "card", style: "margin-top:12px;margin-bottom:4px;background:#f7fafd;border:1.4px solid #e6ecf0;" },
+    h("div", { class: "avatar", style: "opacity:0.80;" }, getInitials(originalPost.author)),
+    h("div", { class: "content" },
+      h("div", { class: "meta" },
+        h("span", { class: "displayName" }, displayNameFromAuthor(originalPost.author)),
+        h("span", { class: "handle" }, handleFromAuthor(originalPost.author)),
+      ),
+      h("div", { class: "text" }, originalPost.text || ""),
+      ((originalPost.media && Array.isArray(originalPost.media) && originalPost.media.length > 0) || originalPost.mediaUrl) ? mediaEl(originalPost) : null
+    )
+  );
+  const card = h("div", { class: "card repost-card" },
+    h("div", { class: "avatar", title: reposterName, style: "background:#b3b3b3;" }, reposterName.slice(0,2).toUpperCase()),
+    h("div", { class: "content" },
+      h("div", { class: "meta" },
+        h("span", { class: "displayName" }, reposterName),
+        h("span", { class: "handle" }, reposterHandle),
+        h("span", { class: "time", style: "color:#2cbeff;padding-left:5px;" }, "· Reposted")
       ),
       h("div", { style: "margin:8px 0 0 0;" }, quoteCard)
     )
@@ -294,17 +335,28 @@ function repostBtn(postId, reposted) {
         e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
         e.currentTarget.classList.toggle("active", next);
         sessionStorage.setItem(key, next ? "1" : "0");
-        try { await writeInteraction(session.sessionId, postId, { reposted: next }); } catch {}
-        // Update session reposts & re-render feed
-        repostedIds = loadReposts();
-        if (next) {
-          if (!repostedIds.includes(postId)) repostedIds.push(postId);
-        } else {
-          repostedIds = repostedIds.filter(id => id !== postId);
-        }
-        saveReposts();
-        const variant = localStorage.getItem("sod_variant") || "mixed";
-        renderFeed(variant);
+        try {
+          await writeInteraction(session.sessionId, postId, { reposted: next });
+          // Create or delete public repost
+          if (next) {
+            // Find the original post object in current feed (best-effort)
+            const container = document.getElementById("feed");
+            let original = null;
+            // We don't keep a global map; rely on last showPosts arg through closure isn't available.
+            // Instead, fetch a minimal snapshot via loadPostsForVariant and pick by id.
+            const variant = localStorage.getItem("sod_variant") || "mixed";
+            const posts = await loadPostsForVariant(variant);
+            original = posts.find(p => p.id === postId) || { id: postId };
+            const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
+            await createRepost(original, author);
+          } else {
+            const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
+            await deleteRepostByAuthor(postId, author);
+          }
+          // Re-render feed to reflect changes
+          const variant = localStorage.getItem("sod_variant") || "mixed";
+          renderFeed(variant);
+        } catch {}
         updateLikeRepostCounts(postId);
       },
     },

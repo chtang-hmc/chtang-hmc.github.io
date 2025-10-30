@@ -99,6 +99,35 @@ export async function createPost({ text, media = [], mediaType = "text", author,
   });
 }
 
+export async function createRepost(originalPost, author) {
+  const coll = collection(db, "posts");
+  const stance = originalPost.stance || "mixed";
+  const repostDoc = {
+    type: "repost",
+    repostOfId: originalPost.id,
+    repostOriginal: {
+      id: originalPost.id,
+      text: originalPost.text || "",
+      author: originalPost.author || "",
+      media: Array.isArray(originalPost.media) ? originalPost.media : (originalPost.mediaUrl ? [originalPost.mediaUrl] : []),
+      mediaType: originalPost.mediaType || (originalPost.mediaUrl ? (/(mp4|webm)$/i.test(originalPost.mediaUrl) ? "video" : "images") : "text"),
+      stance: stance,
+    },
+    author, // reposter
+    stance, // use original stance for filtering
+    createdAt: serverTimestamp(),
+  };
+  return addDoc(coll, repostDoc);
+}
+
+export async function deleteRepostByAuthor(originalPostId, author) {
+  const coll = collection(db, "posts");
+  const q = query(coll, where("type", "==", "repost"), where("repostOfId", "==", originalPostId), where("author", "==", author));
+  const qs = await getDocs(q);
+  const deletions = qs.docs.map(d => deleteDoc(d.ref));
+  await Promise.allSettled(deletions);
+}
+
 export async function deletePost(postId, mediaUrlsOrUrl, authorSessionId) {
   // Delete Firestore doc
   await deleteDoc(doc(db, "posts", postId));
