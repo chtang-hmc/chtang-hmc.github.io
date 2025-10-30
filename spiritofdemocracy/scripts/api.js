@@ -1,6 +1,6 @@
 import { auth, db, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot, deleteDoc, collectionGroup } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 export async function loadPostsForVariant(variant) {
@@ -127,6 +127,20 @@ export function subscribeComments(postId, callback) {
     });
     callback(items);
   });
+}
+
+export async function getPostLikeRepostCounts(postId) {
+  // Use collection group query for efficient counting
+  const qs = await getDocs(collectionGroup(db, `interactions`));
+  let likeCount = 0, repostCount = 0;
+  qs.forEach(docSnap => {
+    const d = docSnap.data();
+    if (docSnap.id === postId) {
+      if (d.liked) likeCount++;
+      if (d.reposted) repostCount++;
+    }
+  });
+  return { likeCount, repostCount };
 }
 
 

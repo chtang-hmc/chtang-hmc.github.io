@@ -1,6 +1,6 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost, getPostLikeRepostCounts } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
@@ -86,9 +86,11 @@ async function renderPostCard(post) {
       ),
       h("div", { class: "text" }, post.text || ""),
       post.mediaUrl ? mediaEl(post) : null,
-      h("div", { class: "actions" },
+      h("div", { class: "actions", id: `actions_${post.id}` },
         likeBtn(post.id, liked),
+        h("span", { class: "counter", id: `likeCount_${post.id}` }, ''),
         repostBtn(post.id, reposted),
+        h("span", { class: "counter", id: `repostCount_${post.id}` }, ''),
         genBtn(post.id),
       ),
       h("div", { class: "comments", id: `comments_${post.id}` }),
@@ -98,6 +100,8 @@ async function renderPostCard(post) {
 
   await refreshComments(post.id);
   setupCommentsSubscription(post.id);
+  // After rendering, fetch counts
+  setTimeout(() => updateLikeRepostCounts(post.id), 0);
   return card;
 }
 
@@ -174,6 +178,7 @@ function likeBtn(postId, liked) {
         e.currentTarget.classList.toggle("active", next);
         sessionStorage.setItem(key, next ? "1" : "0");
         try { await writeInteraction(session.sessionId, postId, { liked: next }); } catch {}
+        updateLikeRepostCounts(postId);
       },
     },
     liked
@@ -207,6 +212,7 @@ function repostBtn(postId, reposted) {
         saveReposts();
         const variant = localStorage.getItem("sod_variant") || "mixed";
         renderFeed(variant);
+        updateLikeRepostCounts(postId);
       },
     },
     reposted ? "🔁 Repost" : "⤴ Repost"
@@ -299,6 +305,14 @@ async function refreshComments(postId) {
     );
     container.appendChild(el);
   }
+}
+
+async function updateLikeRepostCounts(postId) {
+  const { likeCount, repostCount } = await getPostLikeRepostCounts(postId);
+  const likeCountSpan = document.getElementById(`likeCount_${postId}`);
+  if (likeCountSpan) likeCountSpan.innerText = likeCount>0 ? String(likeCount) : '';
+  const repostCountSpan = document.getElementById(`repostCount_${postId}`);
+  if (repostCountSpan) repostCountSpan.innerText = repostCount>0 ? String(repostCount) : '';
 }
 
 async function main() {
