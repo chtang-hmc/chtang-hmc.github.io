@@ -82,8 +82,6 @@ async function renderPostCard(post) {
         h("span", { class: "displayName" }, display),
         h("span", { class: "handle" }, handle),
         time,
-        h("span", {}, post.stance.toUpperCase()),
-        // Only show delete if isMine and not from static posts
         (isMine && !post.__static) ? deleteBtn(post) : null
       ),
       h("div", { class: "text" }, post.text || ""),
@@ -114,7 +112,7 @@ async function renderRepostCard(originalPost) {
       h("div", { class: "meta" },
         h("span", { class: "displayName" }, displayNameFromAuthor(originalPost.author)),
         h("span", { class: "handle" }, handleFromAuthor(originalPost.author)),
-        h("span", { class: "time", style: "color:#2cbeff;padding-left:5px;" }, "· Reposted by you")
+        // stance hidden
       ),
       h("div", { class: "text" }, originalPost.text || ""),
       originalPost.mediaUrl ? mediaEl(originalPost) : null
