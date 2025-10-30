@@ -1,7 +1,7 @@
 import { auth, db, functions } from "./firebase.js";
-import { httpsCallable } from "firebase/functions";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot, deleteDoc, collectionGroup } from "firebase/firestore";
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot, deleteDoc, collectionGroup } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 export async function loadPostsForVariant(variant) {
   // 1. Load user posts from Firestore
@@ -72,16 +72,39 @@ export async function loadAllInteractions(sessionId) {
 export async function uploadMediaFile(file, sessionId, progressCb) {
   if (!file) throw new Error('No file');
   if (file.size > 15 * 1024 * 1024) throw new Error('File too large (max 15MB)');
+
   const contentType = file.type;
   const ext = file.name.split('.').pop() || '';
   const filename = `media_${Date.now()}.${ext}`;
   const storage = getStorage();
   const path = `uploads/${sessionId}/${filename}`;
   const fileRef = storageRef(storage, path);
-  // Upload with progress (optional)
-  await uploadBytesResumable(fileRef, file, { contentType });
-  return await getDownloadURL(fileRef);
+
+  // Properly handle resumable upload
+  const uploadTask = uploadBytesResumable(fileRef, file, { contentType });
+
+  return new Promise((resolve, reject) => {
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        if (progressCb) {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          progressCb(progress);
+        }
+      },
+      (error) => reject(error),
+      async () => {
+        try {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(url);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
 }
+
 
 export async function createPost({text, mediaType, mediaUrl, author, stance}) {
   const coll = collection(db, "posts");
