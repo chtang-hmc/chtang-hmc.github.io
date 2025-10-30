@@ -1,0 +1,8 @@
+[
+    {
+      "origin": ["https://chtang-hmc.github.io"],
+      "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+      "responseHeader": ["Content-Type", "x-goog-meta-*", "x-goog-storage-class", "Cache-Control", "Range", "Authorization"],
+      "maxAgeSeconds": 3600
+    }
+  ]
