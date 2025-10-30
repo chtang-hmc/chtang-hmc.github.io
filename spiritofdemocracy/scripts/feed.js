@@ -18,6 +18,21 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+function getInitials(author) {
+  if (!author || typeof author !== "string") return "?";
+  return author.trim().slice(0, 2).toUpperCase();
+}
+
+function displayNameFromAuthor(author) {
+  if (!author) return "Unknown";
+  return author.replace(/_([a-z])/g, (_, x) => ` ${x.toUpperCase()}`).replace(/(^| )([a-z])/g, m => m.toUpperCase());
+}
+
+function handleFromAuthor(author) {
+  if (!author) return "@user";
+  return "@" + author.toLowerCase();
+}
+
 async function renderFeed(variant) {
   const container = document.getElementById("feed");
   container.innerHTML = "";
@@ -34,10 +49,21 @@ async function renderPostCard(post) {
   const liked = initial.liked === true || sessionStorage.getItem(likedKey) === "1";
   const reposted = initial.reposted === true || sessionStorage.getItem(repostedKey) === "1";
 
+  // Twitter/X look: avatar, meta, styled content, media, actions
+  const avatar = h("div", { class: "avatar", title: displayNameFromAuthor(post.author) }, getInitials(post.author));
+  const display = displayNameFromAuthor(post.author);
+  const handle = handleFromAuthor(post.author);
+  const time = h("span", { class: "time" }, "· now");
+
   const card = h("div", { class: "card" },
-    h("div", { class: "avatar" }),
+    avatar,
     h("div", { class: "content" },
-      h("div", { class: "meta" }, h("span", {}, `@user_${post.author || "anon"}`), h("span", {}, "·"), h("span", {}, post.stance.toUpperCase())),
+      h("div", { class: "meta" },
+        h("span", { class: "displayName" }, display),
+        h("span", { class: "handle" }, handle),
+        time,
+        h("span", {}, post.stance.toUpperCase())
+      ),
       h("div", { class: "text" }, post.text || ""),
       post.mediaUrl ? mediaEl(post) : null,
       h("div", { class: "actions" },
@@ -65,41 +91,63 @@ function mediaEl(post) {
 }
 
 function likeBtn(postId, liked) {
-  return h("button", { class: "btn" + (liked ? " active" : ""), "aria-pressed": liked ? "true" : "false", onClick: async (e) => {
-    const key = `liked_${postId}`;
-    const next = !(sessionStorage.getItem(key) === "1");
-    // immediate UI
-    e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
-    e.currentTarget.classList.toggle("active", next);
-    sessionStorage.setItem(key, next ? "1" : "0");
-    // backend write (fire and forget)
-    try { await writeInteraction(session.sessionId, postId, { liked: next }); } catch {}
-  } }, "Like");
+  // Use heart icon (SVG)
+  return h(
+    "button",
+    {
+      class: "btn" + (liked ? " active" : ""),
+      "aria-pressed": liked ? "true" : "false",
+      title: liked ? "Liked" : "Like",
+      onClick: async (e) => {
+        const key = `liked_${postId}`;
+        const next = !(sessionStorage.getItem(key) === "1");
+        e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+        e.currentTarget.classList.toggle("active", next);
+        sessionStorage.setItem(key, next ? "1" : "0");
+        try { await writeInteraction(session.sessionId, postId, { liked: next }); } catch {}
+      },
+    },
+    liked
+      ? "♥ Like"
+      : "♡ Like"
+  );
 }
 
 function repostBtn(postId, reposted) {
-  return h("button", { class: "btn" + (reposted ? " active" : ""), "aria-pressed": reposted ? "true" : "false", onClick: async (e) => {
-    const key = `reposted_${postId}`;
-    const next = !(sessionStorage.getItem(key) === "1");
-    // immediate UI
-    e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
-    e.currentTarget.classList.toggle("active", next);
-    sessionStorage.setItem(key, next ? "1" : "0");
-    // backend write (fire and forget)
-    try { await writeInteraction(session.sessionId, postId, { reposted: next }); } catch {}
-  } }, "Repost");
+  // Use retweet icon (unicode for now)
+  return h(
+    "button",
+    {
+      class: "btn" + (reposted ? " active" : ""),
+      "aria-pressed": reposted ? "true" : "false",
+      title: reposted ? "Reposted" : "Repost",
+      onClick: async (e) => {
+        const key = `reposted_${postId}`;
+        const next = !(sessionStorage.getItem(key) === "1");
+        e.currentTarget.setAttribute("aria-pressed", next ? "true" : "false");
+        e.currentTarget.classList.toggle("active", next);
+        sessionStorage.setItem(key, next ? "1" : "0");
+        try { await writeInteraction(session.sessionId, postId, { reposted: next }); } catch {}
+      },
+    },
+    reposted ? "🔁 Repost" : "⤴ Repost"
+  );
 }
 
 function genBtn(postId) {
-  return h("button", { class: "btn", onClick: async () => {
-    try {
-      const res = await generateComments(postId, 3);
-      await refreshComments(postId);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to generate comments.");
-    }
-  } }, "Generate comments");
+  return h(
+    "button",
+    { class: "btn", title: "Generate AI Replies", onClick: async () => {
+        try {
+          const res = await generateComments(postId, 3);
+          await refreshComments(postId);
+        } catch (e) {
+          console.error(e);
+          alert("Failed to generate comments.");
+        }
+      } },
+    "💬 AI"
+  );
 }
 
 function commentForm(postId) {
