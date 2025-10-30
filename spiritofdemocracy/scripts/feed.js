@@ -337,9 +337,11 @@ if(urlInput) urlInput.oninput = () => {
   }
 }
 function toYoutubeEmbed(url) {
-  // Convert normal Youtube link to embed form
-  let vid = url.match(/(?:v=|youtu.be\/)([\w-]+)/);
-  if(!vid) return url;
+  if (!url) return url;
+  // Match any YouTube/Shorts link
+  // Try to extract video ID from regular, short, or shorts
+  let vid = url.match(/(?:v=|youtu.be\/|shorts\/)([\w-]{11})/);
+  if (!vid) return url;
   return `https://www.youtube.com/embed/${vid[1]}`;
 }
 if(form) form.onsubmit = async (e) => {
