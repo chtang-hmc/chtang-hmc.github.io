@@ -10,8 +10,7 @@ export function applyRoute(variant) {
   if (!location.hash || !location.hash.includes(variant)) {
     location.hash = `#/${variant}`;
   }
-  const label = document.getElementById("variant-label");
-  if (label) label.textContent = variant.toUpperCase();
+  // do not show variant label UI anymore
 }
 
 
