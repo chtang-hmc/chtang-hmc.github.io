@@ -436,6 +436,9 @@ let postMediaFiles = [];
 let postMediaType = null;
 let postMediaYoutubeUrl = '';
 const gallery = document.getElementById("post-media-gallery");
+const dropzone = document.getElementById("media-dropzone");
+const addMediaBtn = document.getElementById("add-media-btn");
+let dragover = false;
 
 if(FAB) FAB.onclick = () => { modal.classList.remove("hidden"); };
 if(closeBtn) closeBtn.onclick = () => { modal.classList.add("hidden"); resetNewPostModal(); };
@@ -487,6 +490,34 @@ if (fileInput) fileInput.onchange = (e) => {
     gallery.appendChild(thumb);
   });
 };
+if (addMediaBtn && fileInput) {
+  addMediaBtn.onclick = () => fileInput.click();
+}
+if (dropzone && fileInput) {
+  dropzone.ondragover = (e) => { e.preventDefault(); dragover = true; dropzone.classList.add('dragover'); };
+  dropzone.ondragleave = (e) => { dragover = false; dropzone.classList.remove('dragover'); };
+  dropzone.ondrop = (e) => {
+    e.preventDefault(); dropzone.classList.remove('dragover');
+    const dt = e.dataTransfer;
+    if (!dt || !dt.files) return;
+    let files = Array.from(dt.files);
+    // Only images/gifs/videos allowed
+    let hasVideo = files.some(f => f.type.startsWith('video'));
+    if (hasVideo && files.length > 1) {
+      alert('Only one video per post allowed'); return;
+    }
+    if (!hasVideo && files.length > 4) {
+      alert('Max 4 images/gifs per post!'); return;
+    }
+    if (hasVideo) files = files.filter(f => f.type.startsWith('video'));
+    else files = files.filter(f => f.type.startsWith('image'));
+    postMediaFiles = files;
+    postMediaType = hasVideo ? 'video' : 'images';
+    renderMediaGallery();
+    fileInput.value = '';
+  };
+}
+// Enhance renderMediaGallery to scroll gallery into view when a new image is added
 function renderMediaGallery() {
   gallery.innerHTML = "";
   postMediaFiles.forEach((file, i) => {
@@ -510,6 +541,9 @@ function renderMediaGallery() {
     thumb.appendChild(rm);
     gallery.appendChild(thumb);
   });
+  if (gallery.children.length > 0) {
+    gallery.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 // Youtube
 if(urlInput) urlInput.oninput = () => {
