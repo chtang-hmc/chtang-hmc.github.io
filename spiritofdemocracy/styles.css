@@ -251,6 +251,31 @@ input[type="text"]:focus {
 #post-media-preview img, #post-media-preview video { max-width: 98%; border-radius: 16px; box-shadow: 0 2px 12px #e7edf0; margin-top: 7px; max-height: 195px; background: #fff;}
 #post-media-preview { text-align: left;}
 
+#fab-admin-post {
+  background: #109140;
+  color: #fff;
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  font-size: 2.1em;
+  border: none;
+  box-shadow: 0 2px 16px rgba(16,145,64,0.13);
+  cursor: pointer;
+  transition: background 0.13s, box-shadow 0.13s;
+  display: flex; align-items: center; justify-content: center;
+}
+#fab-admin-post:hover {
+  background: #087428;
+  box-shadow: 0 6px 22px rgba(16,145,64,0.17);
+}
+#admin-post-form label { font-weight: 600; }
+#admin-post-form textarea { border: 1.5px solid #d0dbe6; border-radius: 13px;padding: 9px 10px; font-size: 1.08em; font-family: inherit;resize:vertical; color: #153049;}
+#admin-post-form textarea:focus { outline: none; border-color: #1d9bf0; }
+#admin-post-form input[type="file"] { margin-top: 4px; }
+#admin-post-form input[type="text"] { margin: 3px 0; }
+#admin-post-form button.btn.primary { min-width: 90px; }
+#admin-post-media-preview img, #admin-post-media-preview video { max-width: 98%; border-radius: 16px; box-shadow: 0 2px 12px #e7edf0; margin-top: 7px; max-height: 195px; background: #fff;}
+#admin-post-media-preview { text-align: left;}
+
 @media (max-width: 700px) {
   .feed { padding-left: 2vw; padding-right: 2vw; }
 }

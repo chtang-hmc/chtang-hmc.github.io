@@ -384,4 +384,65 @@ if(form) form.onsubmit = async (e) => {
   }
 };
 
+function showIfLocal(id) {
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    const el = document.getElementById(id); if (el) el.style.display = "flex";
+  }
+}
+showIfLocal("fab-admin-post");
+// Admin post modal logic
+const adminFAB = document.getElementById("fab-admin-post");
+const adminModal = document.getElementById("modal-admin-post");
+const adminForm = document.getElementById("admin-post-form");
+const adminClose = document.getElementById("cancel-admin-post");
+const adminPrev = document.getElementById("admin-post-media-preview");
+const adminFile = document.getElementById("admin-post-media");
+const adminUrl = document.getElementById("admin-post-media-url");
+let adminUploadUrl = null;
+let adminFileType = null;
+if (adminFAB) adminFAB.onclick = () => { adminModal.classList.remove("hidden"); };
+if (adminClose) adminClose.onclick = () => { adminModal.classList.add("hidden"); resetAdminModal(); };
+function resetAdminModal() { if(adminForm)adminForm.reset(); adminPrev.innerHTML = ""; adminUploadUrl = null; adminFileType = null; }
+if (adminFile) adminFile.onchange = async (e) => {
+  adminPrev.innerHTML = ""; adminUploadUrl = null;
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const type = file.type.startsWith("image") ? "image" : (file.type.startsWith("video") ? "video" : file.type === "image/gif" ? "gif" : null);
+  if (!type) { adminPrev.innerHTML = "<span style='color:red'>Unsupported type</span>"; return; }
+  adminPrev.innerHTML = "Uploading...";
+  try {
+    adminFileType = type;
+    adminUploadUrl = await uploadMediaFile(file, session.sessionId);
+    if(type==="image"||type==="gif") adminPrev.innerHTML = `<img src='${adminUploadUrl}'>`;
+    else if(type==="video") adminPrev.innerHTML = `<video src='${adminUploadUrl}' controls>`;
+  } catch(e) { adminPrev.innerHTML = `<span style='color:red'>${e.message}</span>`; adminUploadUrl = null; }
+};
+if (adminUrl) adminUrl.oninput = () => {
+  adminPrev.innerHTML = ""; if(adminUrl.value) adminFile.value=""; adminUploadUrl = null; adminFileType = null;
+  const url = adminUrl.value.trim();
+  if (url && (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("shorts/"))) {
+    adminPrev.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${toYoutubeEmbed(url)}' frameborder='0' allowfullscreen></iframe>`;
+    adminUploadUrl = toYoutubeEmbed(url); adminFileType = "youtube";
+  }
+}
+if(adminForm) adminForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const text = document.getElementById("admin-post-text").value.trim();
+  const stance = document.getElementById("admin-post-stance").value;
+  const author = document.getElementById("admin-post-author").value.trim();
+  if (!text || !stance || !author) { alert("All fields required"); return; }
+  let mediaUrl = adminUploadUrl;
+  let mediaType = adminFileType;
+  if (!mediaUrl) { mediaType = "text"; }
+  try {
+    await createPost({ text, mediaUrl, mediaType, author, stance });
+    adminModal.classList.add("hidden"); resetAdminModal();
+    // re-render feed to show new post
+    const variant = localStorage.getItem("sod_variant") || "mixed";
+    renderFeed(variant);
+  } catch (e) {
+    alert("Failed to publish admin post: " + e.message);
+  }
+};
+
 
