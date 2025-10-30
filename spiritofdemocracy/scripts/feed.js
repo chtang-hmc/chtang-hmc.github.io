@@ -440,8 +440,13 @@ const dropzone = document.getElementById("media-dropzone");
 const addMediaBtn = document.getElementById("add-media-btn");
 let dragover = false;
 
+const errorDiv = document.getElementById("post-modal-error");
+
+function clearPostModalError() { if (errorDiv) errorDiv.innerText = ""; }
+function showPostModalError(msg) { if (errorDiv) errorDiv.innerText = msg; }
+
 if(FAB) FAB.onclick = () => { modal.classList.remove("hidden"); };
-if(closeBtn) closeBtn.onclick = () => { modal.classList.add("hidden"); resetNewPostModal(); };
+if (closeBtn) closeBtn.onclick = () => { modal.classList.add("hidden"); clearPostModalError(); resetNewPostModal(); };
 function resetNewPostModal() {
   form.reset(); preview.innerHTML = ""; fileInput.value = ""; urlInput.value = ""; uploadedUrl = null; fileTypeHint = null;
 }
@@ -493,21 +498,22 @@ if (fileInput) fileInput.onchange = (e) => {
 if (addMediaBtn && fileInput) {
   addMediaBtn.onclick = () => fileInput.click();
 }
+// Update drag-and-drop to focus gallery and highlight dropzone
 if (dropzone && fileInput) {
-  dropzone.ondragover = (e) => { e.preventDefault(); dragover = true; dropzone.classList.add('dragover'); };
-  dropzone.ondragleave = (e) => { dragover = false; dropzone.classList.remove('dragover'); };
+  dropzone.ondragover = (e) => { e.preventDefault(); dragover = true; dropzone.classList.add('dragover'); gallery.classList.add('dragover'); };
+  dropzone.ondragleave = (e) => { dragover = false; dropzone.classList.remove('dragover'); gallery.classList.remove('dragover'); };
   dropzone.ondrop = (e) => {
-    e.preventDefault(); dropzone.classList.remove('dragover');
+    e.preventDefault(); dropzone.classList.remove('dragover'); gallery.classList.remove('dragover');
+    clearPostModalError();
     const dt = e.dataTransfer;
     if (!dt || !dt.files) return;
     let files = Array.from(dt.files);
-    // Only images/gifs/videos allowed
     let hasVideo = files.some(f => f.type.startsWith('video'));
     if (hasVideo && files.length > 1) {
-      alert('Only one video per post allowed'); return;
+      showPostModalError('Only one video per post allowed'); return;
     }
     if (!hasVideo && files.length > 4) {
-      alert('Max 4 images/gifs per post!'); return;
+      showPostModalError('Max 4 images/gifs per post!'); return;
     }
     if (hasVideo) files = files.filter(f => f.type.startsWith('video'));
     else files = files.filter(f => f.type.startsWith('image'));
@@ -560,9 +566,13 @@ if(urlInput) urlInput.oninput = () => {
 
 if(form) form.onsubmit = async (e) => {
   e.preventDefault();
+  clearPostModalError();
   const text = document.getElementById("post-text").value.trim();
-  if (!text) { alert("Post text required"); return; }
-  // Google: upload all files if present
+  let validMedia = (postMediaFiles && postMediaFiles.length > 0) || postMediaYoutubeUrl;
+  if (!text && !validMedia) {
+    showPostModalError("Please enter text or attach images/video!");
+    return;
+  }
   let mediaUrls = [], mediaType = postMediaType;
   try {
     if (postMediaFiles && postMediaFiles.length > 0) {
@@ -572,17 +582,16 @@ if(form) form.onsubmit = async (e) => {
       mediaUrls = [postMediaYoutubeUrl];
       mediaType = "youtube";
     }
-    if (mediaType === null) mediaType = "text";
-    // Author and stance
+    if (mediaType === null && !validMedia) mediaType = "text";
     const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
     const stance = session && session.variant ? session.variant : "mixed";
     await createPost({ text, media: mediaUrls, mediaType, author, stance });
     modal.classList.add("hidden");
-    // Reset UI
     form.reset();
     gallery.innerHTML = "";
+    clearPostModalError();
     postMediaFiles = []; postMediaYoutubeUrl = ''; postMediaType = null; fileInput.value=''; urlInput.value='';
-  } catch(e) { alert("Failed to publish post: " + e.message); }
+  } catch(e) { showPostModalError("Failed to publish post: " + e.message); }
 };
 
 function showIfLocal(id) {
