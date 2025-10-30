@@ -146,7 +146,7 @@ async function renderPostCard(post) {
         (isMine && !post.__static) ? deleteBtn(post) : null
       ),
       h("div", { class: "text" }, post.text || ""),
-      post.mediaUrl ? mediaEl(post) : null,
+      ((post.media && Array.isArray(post.media) && post.media.length > 0) || post.mediaUrl) ? mediaEl(post) : null,
       h("div", { class: "actions", id: `actions_${post.id}` },
         likeBtn(post.id, liked),
         h("span", { class: "counter", id: `likeCount_${post.id}` }, ''),
@@ -180,7 +180,7 @@ async function renderRepostCard(originalPost) {
         // stance hidden
       ),
       h("div", { class: "text" }, originalPost.text || ""),
-      originalPost.mediaUrl ? mediaEl(originalPost) : null
+      ((originalPost.media && Array.isArray(originalPost.media) && originalPost.media.length > 0) || originalPost.mediaUrl) ? mediaEl(originalPost) : null
     )
   );
   const card = h("div", { class: "card repost-card" },

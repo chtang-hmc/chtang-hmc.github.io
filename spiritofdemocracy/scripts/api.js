@@ -83,10 +83,13 @@ export async function uploadMediaFile(file, sessionId, progressCb) {
   return await getDownloadURL(fileRef);
 }
 
-export async function createPost({text, mediaType, mediaUrl, author, stance}) {
+export async function createPost({ text, media = [], mediaType = "text", author, stance }) {
   const coll = collection(db, "posts");
   return addDoc(coll, {
-    text, mediaType, mediaUrl: mediaUrl || "", author,
+    text,
+    media,        // array of URLs ([] if text-only)
+    mediaType,    // 'images' | 'video' | 'youtube' | 'text'
+    author,
     stance,
     createdAt: serverTimestamp(),
   });
