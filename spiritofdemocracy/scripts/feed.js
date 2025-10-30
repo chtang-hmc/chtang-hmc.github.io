@@ -573,6 +573,11 @@ if(form) form.onsubmit = async (e) => {
     showPostModalError("Please enter text or attach images/video!");
     return;
   }
+  // Ensure we have an authenticated anonymous session before uploading
+  if (!session || !session.sessionId) {
+    const variant = localStorage.getItem("sod_variant") || "mixed";
+    session = await ensureAnonymousSession(() => variant);
+  }
   let mediaUrls = [], mediaType = postMediaType;
   try {
     if (postMediaFiles && postMediaFiles.length > 0) {
@@ -621,6 +626,11 @@ if (adminFile) adminFile.onchange = async (e) => {
   if (!type) { adminPrev.innerHTML = "<span style='color:red'>Unsupported type</span>"; return; }
   adminPrev.innerHTML = "Uploading...";
   try {
+    // Ensure session for storage upload
+    if (!session || !session.sessionId) {
+      const variant = localStorage.getItem("sod_variant") || "mixed";
+      session = await ensureAnonymousSession(() => variant);
+    }
     adminFileType = type;
     adminUploadUrl = await uploadMediaFile(file, session.sessionId);
     if(type==="image"||type==="gif") adminPrev.innerHTML = `<img src='${adminUploadUrl}'>`;
@@ -641,15 +651,19 @@ if(adminForm) adminForm.onsubmit = async (e) => {
   const stance = document.getElementById("admin-post-stance").value;
   const author = document.getElementById("admin-post-author").value.trim();
   if (!text || !stance || !author) { alert("All fields required"); return; }
+  // Ensure session before any writes
+  if (!session || !session.sessionId) {
+    const variant = localStorage.getItem("sod_variant") || "mixed";
+    session = await ensureAnonymousSession(() => variant);
+  }
   let mediaUrl = adminUploadUrl;
   let mediaType = adminFileType;
   if (!mediaUrl) { mediaType = "text"; }
   try {
-    await createPost({ text, mediaUrl, mediaType, author, stance });
+    await createPost({ text, media: mediaUrl ? [mediaUrl] : [], mediaType, author, stance });
     adminModal.classList.add("hidden"); resetAdminModal();
-    // re-render feed to show new post
     const variant = localStorage.getItem("sod_variant") || "mixed";
-    renderFeed(variant);
+    listenToFeedPosts(variant);
   } catch (e) {
     alert("Failed to publish admin post: " + e.message);
   }
