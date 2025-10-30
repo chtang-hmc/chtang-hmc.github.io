@@ -4,10 +4,30 @@ import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 export async function loadPostsForVariant(variant) {
-  // For low traffic and simplicity, load from bundled JSON and filter.
-  const res = await fetch("./data/posts.json");
-  const all = await res.json();
-  return all.filter(p => p.stance === variant || variant === "mixed" && (p.stance === "pro" || p.stance === "against"));
+  // 1. Load user posts from Firestore
+  const userPosts = [];
+  const col = collection(db, "posts");
+  let fb = [];
+  try {
+    const qs = await getDocs(col);
+    fb = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch {}
+  // Only include posts for this variant (or all for 'mixed')
+  const allowed = (p) => p.stance === variant || (variant === "mixed" && (p.stance === "pro" || p.stance === "against"));
+  // 2. Load static
+  let staticPosts = [];
+  try {
+    const res = await fetch("./data/posts.json");
+    staticPosts = (await res.json()).map(p => ({ ...p, __static: true, createdAt: { toMillis() { return 0; } } }));
+  } catch {}
+  // 3. Merge and sort
+  const posts = [...fb.filter(allowed), ...staticPosts.filter(allowed)];
+  return posts.sort((a,b) => {
+    // prefer createdAt if present
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return tb - ta;
+  });
 }
 
 export async function writeInteraction(sessionId, postId, updates) {
