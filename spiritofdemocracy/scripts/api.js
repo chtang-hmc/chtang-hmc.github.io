@@ -143,4 +143,26 @@ export async function getPostLikeRepostCounts(postId) {
   return { likeCount, repostCount };
 }
 
+export function subscribeToPostsForVariant(variant, callback) {
+  const col = collection(db, "posts");
+  // 1. Grab static posts once
+  let staticPosts = [];
+  fetch("./data/posts.json").then(async res => {
+    staticPosts = (await res.json()).map(p => ({ ...p, __static: true, createdAt: { toMillis() { return 0; } } }));
+    // after static load, first run with whatever user posts loaded
+  });
+  // 2. Live update Firestore posts and merge with static
+  return onSnapshot(col, snap => {
+    let fb = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allowed = (p) => p.stance === variant || (variant === "mixed" && (p.stance === "pro" || p.stance === "against"));
+    const posts = [...fb.filter(allowed), ...staticPosts.filter(allowed)];
+    posts.sort((a, b) => {
+      const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+      const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+      return tb - ta;
+    });
+    callback(posts);
+  });
+}
+
 

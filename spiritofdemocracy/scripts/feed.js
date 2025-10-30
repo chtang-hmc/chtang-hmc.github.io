@@ -1,12 +1,39 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost, getPostLikeRepostCounts } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost, getPostLikeRepostCounts, subscribeToPostsForVariant } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
 let interactionsByPostId = {};
 // Add to global vars
 let repostedIds = []; // sessionStorage
+
+let unsubscribePosts = null;
+let currentFeedPostsVariant = null;
+
+// Call this function when (re)loading the feed.
+function listenToFeedPosts(variant) {
+  if (unsubscribePosts) { unsubscribePosts(); unsubscribePosts = null; }
+  currentFeedPostsVariant = variant;
+  unsubscribePosts = subscribeToPostsForVariant(variant, showPosts);
+}
+async function showPosts(posts) {
+  const container = document.getElementById("feed");
+  if (!container) return;
+  container.innerHTML = "";
+  repostedIds = loadReposts(); // session repost ids
+  // Display normal posts
+  for (const post of posts) {
+    container.appendChild(await renderPostCard(post));
+  }
+  // Session-local reposts (bottom)
+  for (const postId of repostedIds) {
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      container.appendChild(await renderRepostCard(post));
+    }
+  }
+}
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -320,7 +347,7 @@ async function main() {
   applyRoute(variant);
   session = await ensureAnonymousSession(() => variant);
   interactionsByPostId = await loadAllInteractions(session.sessionId);
-  await renderFeed(session.variant);
+  listenToFeedPosts(variant);
   const durationMs = location.hostname === "localhost" ? 30 * 1000 : 3 * 60 * 1000;
   startTimer(durationMs);
   onTimerEnd(() => {
