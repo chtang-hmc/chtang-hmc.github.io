@@ -71,4 +71,26 @@ export const generateComments = onCall(async (request: CallableRequest<any>) => 
   return { status: "ok", ids: outIds };
 });
 
+export const getPostCounts = onCall(async (request: CallableRequest<any>) => {
+  const { data, auth } = request;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Auth required");
+  }
+  const postId: string = data?.postId;
+  if (!postId) throw new HttpsError("invalid-argument", "postId required");
+
+  // Query across all sessions' interactions for this postId
+  const snap = await db.collectionGroup("interactions").get();
+  let likeCount = 0;
+  let repostCount = 0;
+  snap.forEach(doc => {
+    if (doc.id === postId) {
+      const d = doc.data() as any;
+      if (d.liked) likeCount++;
+      if (d.reposted) repostCount++;
+    }
+  });
+  return { likeCount, repostCount };
+});
+
 

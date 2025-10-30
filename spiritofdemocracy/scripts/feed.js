@@ -334,7 +334,10 @@ function deleteBtn(post) {
     e.stopPropagation();
     if (confirm("Delete this post? This cannot be undone.")) {
       try {
-        await deletePost(post.id, post.mediaUrl, session.sessionId);
+        const mediaUrls = (post.media && Array.isArray(post.media) && post.media.length > 0)
+          ? post.media
+          : (post.mediaUrl ? [post.mediaUrl] : []);
+        await deletePost(post.id, mediaUrls, session.sessionId);
         // Re-render feed without this post
         const variant = localStorage.getItem("sod_variant") || "mixed";
         renderFeed(variant);

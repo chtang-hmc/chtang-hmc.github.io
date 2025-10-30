@@ -12,8 +12,12 @@ export async function loadPostsForVariant(variant) {
     const qs = await getDocs(col);
     fb = qs.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch {}
-  // Only include posts for this variant (or all for 'mixed')
-  const allowed = (p) => p.stance === variant || (variant === "mixed" && (p.stance === "pro" || p.stance === "against"));
+  // Only include posts for this variant (PRO=> PRO+MIXED, AGAINST=> AGAINST+MIXED, MIXED=> all)
+  const allowed = (p) => {
+    if (variant === "pro") return p.stance === "pro" || p.stance === "mixed";
+    if (variant === "against") return p.stance === "against" || p.stance === "mixed";
+    return p.stance === "pro" || p.stance === "against" || p.stance === "mixed";
+  };
   // 2. Load static
   let staticPosts = [];
   try {
@@ -95,18 +99,26 @@ export async function createPost({ text, media = [], mediaType = "text", author,
   });
 }
 
-export async function deletePost(postId, mediaUrl, authorSessionId) {
+export async function deletePost(postId, mediaUrlsOrUrl, authorSessionId) {
   // Delete Firestore doc
   await deleteDoc(doc(db, "posts", postId));
-  // Also delete from storage if belongs to current user
-  if (mediaUrl && mediaUrl.includes("firebase") && mediaUrl.includes("uploads/"+authorSessionId)) {
+  // Normalize to array
+  const mediaUrls = Array.isArray(mediaUrlsOrUrl)
+    ? mediaUrlsOrUrl
+    : (typeof mediaUrlsOrUrl === "string" && mediaUrlsOrUrl ? [mediaUrlsOrUrl] : []);
+  if (!authorSessionId) return; // cannot safely delete without session ownership
+  // Delete each owned media file in Storage
+  for (const mediaUrl of mediaUrls) {
     try {
+      if (!mediaUrl) continue;
+      if (!(mediaUrl.includes("firebase") && mediaUrl.includes("uploads/" + authorSessionId))) continue;
       const storage = getStorage();
       const base = mediaUrl.split("/o/")[1];
+      if (!base) continue;
       const path = decodeURIComponent(base.split("?")[0]);
       const fileRef = storageRef(storage, path);
       await deleteObject(fileRef);
-    } catch (e) { /* ignore storage delete error */ }
+    } catch (e) { /* ignore storage delete error per-file */ }
   }
 }
 
@@ -133,17 +145,10 @@ export function subscribeComments(postId, callback) {
 }
 
 export async function getPostLikeRepostCounts(postId) {
-  // Use collection group query for efficient counting
-  const qs = await getDocs(collectionGroup(db, `interactions`));
-  let likeCount = 0, repostCount = 0;
-  qs.forEach(docSnap => {
-    const d = docSnap.data();
-    if (docSnap.id === postId) {
-      if (d.liked) likeCount++;
-      if (d.reposted) repostCount++;
-    }
-  });
-  return { likeCount, repostCount };
+  // Call server function (avoids client read permission issues)
+  const callable = httpsCallable(functions, "getPostCounts");
+  const res = await callable({ postId });
+  return res.data || { likeCount: 0, repostCount: 0 };
 }
 
 export function subscribeToPostsForVariant(variant, callback) {
@@ -157,7 +162,11 @@ export function subscribeToPostsForVariant(variant, callback) {
   // 2. Live update Firestore posts and merge with static
   return onSnapshot(col, snap => {
     let fb = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const allowed = (p) => p.stance === variant || (variant === "mixed" && (p.stance === "pro" || p.stance === "against"));
+    const allowed = (p) => {
+      if (variant === "pro") return p.stance === "pro" || p.stance === "mixed";
+      if (variant === "against") return p.stance === "against" || p.stance === "mixed";
+      return p.stance === "pro" || p.stance === "against" || p.stance === "mixed";
+    };
     const posts = [...fb.filter(allowed), ...staticPosts.filter(allowed)];
     posts.sort((a, b) => {
       const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
