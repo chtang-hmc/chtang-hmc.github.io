@@ -7,17 +7,7 @@ body {
   color: #0f1419;
 }
 
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e6ecf0;
-}
+.app-header { display:flex; align-items:center; gap: 16px; background:#fff; padding:12px 16px; border-bottom:1px solid #e6ecf0; position:sticky; top:0; z-index:10; }
 .app-header h1 {
   font-size: 20px;
   font-weight: bold;
@@ -275,6 +265,15 @@ input[type="text"]:focus {
 #admin-post-form button.btn.primary { min-width: 90px; }
 #admin-post-media-preview img, #admin-post-media-preview video { max-width: 98%; border-radius: 16px; box-shadow: 0 2px 12px #e7edf0; margin-top: 7px; max-height: 195px; background: #fff;}
 #admin-post-media-preview { text-align: left;}
+
+#settings-btn { background: none; border: none; cursor: pointer; color: #607389; padding: 3px 17px 3px 12px; font-size: 1.44em; transition: color 0.11s; outline:none; position:relative; z-index:20;}
+#settings-btn:hover { color: #1d9bf0; background:rgba(30,186,255,0.037);}
+#settings-modal .modal-content h2 {
+  color: #1d9bf0;
+}
+#toggle-timer {
+  accent-color: #1d9bf0;
+}
 
 @media (max-width: 700px) {
   .feed { padding-left: 2vw; padding-right: 2vw; }

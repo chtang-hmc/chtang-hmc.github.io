@@ -10,7 +10,11 @@
 <body>
   <header class="app-header">
     <h1>Spirit of Democracy</h1>
+    <div style="flex:1"></div>
     <div id="countdown" class="countdown" aria-live="polite">03:00</div>
+    <button id="settings-btn" title="Settings">
+      <span style="font-size:1.3em;">⚙️</span>
+    </button>
   </header>
 
   <main id="app">
@@ -97,6 +101,18 @@
           <button type="submit" class="btn primary" style="min-width:88px;">Post</button>
         </div>
       </form>
+    </div>
+  </div>
+  <!-- Settings modal -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width:400px;">
+      <h2 style="margin-bottom:10px;font-size:1.1em;">Settings</h2>
+      <label style="font-size:17px;font-weight:500;margin-top:10px;display:flex;align-items:center;gap:12px;">
+        <input type="checkbox" id="toggle-timer" style="width:22px;height:22px;" checked> Timer enabled
+      </label>
+      <div class="modal-actions" style="margin-top:24px;justify-content:center;">
+        <button type="button" id="settings-close" class="btn">Close</button>
+      </div>
     </div>
   </div>
 </body>
