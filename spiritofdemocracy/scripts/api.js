@@ -1,7 +1,7 @@
 import { auth, db, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 export async function loadPostsForVariant(variant) {
   // 1. Load user posts from Firestore
@@ -90,6 +90,21 @@ export async function createPost({text, mediaType, mediaUrl, author, stance}) {
     stance,
     createdAt: serverTimestamp(),
   });
+}
+
+export async function deletePost(postId, mediaUrl, authorSessionId) {
+  // Delete Firestore doc
+  await deleteDoc(doc(db, "posts", postId));
+  // Also delete from storage if belongs to current user
+  if (mediaUrl && mediaUrl.includes("firebase") && mediaUrl.includes("uploads/"+authorSessionId)) {
+    try {
+      const storage = getStorage();
+      const base = mediaUrl.split("/o/")[1];
+      const path = decodeURIComponent(base.split("?")[0]);
+      const fileRef = storageRef(storage, path);
+      await deleteObject(fileRef);
+    } catch (e) { /* ignore storage delete error */ }
+  }
 }
 
 export function subscribeComments(postId, callback) {

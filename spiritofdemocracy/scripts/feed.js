@@ -1,6 +1,6 @@
 import { ensureAnonymousSession } from "./firebase.js";
 import { resolveVariant, applyRoute } from "./router.js";
-import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost } from "./api.js";
+import { loadPostsForVariant, writeInteraction, listComments, addUserComment, generateComments, loadAllInteractions, subscribeComments, uploadMediaFile, createPost, deletePost } from "./api.js";
 import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
@@ -68,7 +68,7 @@ async function renderPostCard(post) {
   const initial = interactionsByPostId[post.id] || {};
   const liked = initial.liked === true || sessionStorage.getItem(likedKey) === "1";
   const reposted = initial.reposted === true || sessionStorage.getItem(repostedKey) === "1";
-
+  const isMine = session && session.sessionId && (post.author === `user_${session.sessionId.substr(-6)}`);
   // Twitter/X look: avatar, meta, styled content, media, actions
   const avatar = h("div", { class: "avatar", title: displayNameFromAuthor(post.author) }, getInitials(post.author));
   const display = displayNameFromAuthor(post.author);
@@ -82,7 +82,9 @@ async function renderPostCard(post) {
         h("span", { class: "displayName" }, display),
         h("span", { class: "handle" }, handle),
         time,
-        h("span", {}, post.stance.toUpperCase())
+        h("span", {}, post.stance.toUpperCase()),
+        // Only show delete if isMine and not from static posts
+        (isMine && !post.__static) ? deleteBtn(post) : null
       ),
       h("div", { class: "text" }, post.text || ""),
       post.mediaUrl ? mediaEl(post) : null,
@@ -209,6 +211,23 @@ function genBtn(postId) {
       } },
     "💬 AI"
   );
+}
+
+function deleteBtn(post) {
+  return h("button", { class: "btn", title: "Delete", style: "margin-left:auto;font-size:17px;padding:4px 8px;color:#e81c4f;", onClick: async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm("Delete this post? This cannot be undone.")) {
+      try {
+        await deletePost(post.id, post.mediaUrl, session.sessionId);
+        // Re-render feed without this post
+        const variant = localStorage.getItem("sod_variant") || "mixed";
+        renderFeed(variant);
+      } catch (err) {
+        alert("Delete failed: " + (err.message || err));
+      }
+    }
+  } }, "🗑");
 }
 
 function commentForm(postId) {
