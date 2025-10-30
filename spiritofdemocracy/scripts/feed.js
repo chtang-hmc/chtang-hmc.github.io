@@ -198,9 +198,42 @@ async function renderRepostCard(originalPost) {
 }
 
 function mediaEl(post) {
-  // Render YouTube/Shorts if link
+  // Prefer new media array
+  if (post.media && Array.isArray(post.media) && post.media.length > 0) {
+    // Images (1-4)
+    if (post.mediaType === "images" || (post.mediaType === "gif" && post.media.length > 0)) {
+      const grid = document.createElement("div");
+      grid.className = "feed-gallery";
+      post.media.slice(0,4).forEach(url => {
+        const im = document.createElement("img");
+        im.src = url;
+        im.alt = "";
+        im.className = "gallery-img";
+        grid.appendChild(im);
+      });
+      return grid;
+    }
+    // Video (single only)
+    if (post.mediaType === "video" && post.media.length === 1) {
+      const v = document.createElement("video");
+      v.controls = true;
+      v.className = "gallery-video";
+      v.src = post.media[0];
+      return v;
+    }
+    // Youtube (single)
+    if (post.mediaType === "youtube" && post.media.length === 1) {
+      const f = document.createElement("iframe");
+      f.src = post.media[0];
+      f.width = "100%";
+      f.style = "aspect-ratio:16/9;border-radius:12px;border:1.5px solid #e6ecf0;";
+      f.setAttribute('frameborder', '0');
+      f.setAttribute('allowfullscreen', 'true');
+      return f;
+    }
+  }
+  // Fallback for old posts
   if ((post.mediaType === "youtube") || (typeof post.mediaUrl === "string" && post.mediaUrl.includes("youtube.com/embed"))) {
-    // eslint-disable-next-line
     return h("div", { class: "media" },
       h("iframe", {
         src: post.mediaUrl,
@@ -218,7 +251,6 @@ function mediaEl(post) {
     return h("div", { class: "media" }, v);
   }
   if (post.mediaUrl) {
-    // Default to image (includes gif)
     return h("div", { class: "media" }, h("img", { src: post.mediaUrl, alt: "" }));
   }
   return null;
@@ -400,6 +432,11 @@ const urlInput = document.getElementById("post-media-url");
 const closeBtn = document.getElementById("cancel-new-post");
 const preview = document.getElementById("post-media-preview");
 
+let postMediaFiles = [];
+let postMediaType = null;
+let postMediaYoutubeUrl = '';
+const gallery = document.getElementById("post-media-gallery");
+
 if(FAB) FAB.onclick = () => { modal.classList.remove("hidden"); };
 if(closeBtn) closeBtn.onclick = () => { modal.classList.add("hidden"); resetNewPostModal(); };
 function resetNewPostModal() {
@@ -407,56 +444,111 @@ function resetNewPostModal() {
 }
 let uploadedUrl = null;
 let fileTypeHint = null;
-if(fileInput) fileInput.onchange = async (e) => {
-  preview.innerHTML = ""; uploadedUrl = null; fileTypeHint = null;
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  const type = file.type.startsWith("image") ? "image" : (file.type.startsWith("video") ? "video" : file.type === "image/gif" ? "gif" : null);
-  if (!type) { preview.innerHTML = "<span style='color:red'>Unsupported type</span>"; return; }
-  preview.innerHTML = "Uploading...";
-  try {
-    fileTypeHint = type;
-    uploadedUrl = await uploadMediaFile(file, session.sessionId);
-    if(type==="image" || type==="gif") preview.innerHTML = `<img src='${uploadedUrl}'>`;
-    else if(type==="video") preview.innerHTML = `<video src='${uploadedUrl}' controls>`;
-  } catch(e) { preview.innerHTML = `<span style='color:red'>${e.message}</span>`; uploadedUrl = null; }
+if (fileInput) fileInput.onchange = (e) => {
+  gallery.innerHTML = "";
+  postMediaFiles = [];
+  postMediaType = null;
+  let files = Array.from(e.target.files);
+  if (files.length === 0) return;
+  // Check if only video or up to 4 images, never mix
+  let hasVideo = files.some(f => f.type.startsWith('video'));
+  if (hasVideo && files.length > 1) {
+    alert('Only one video per post allowed'); fileInput.value = ''; return;
+  }
+  if (!hasVideo && files.length > 4) {
+    alert('Max 4 images/gifs per post!'); fileInput.value = ''; return;
+  }
+  // Only keep images if has video, or images; can't mix
+  if (hasVideo) files = files.filter(f => f.type.startsWith('video'));
+  else files = files.filter(f => f.type.startsWith('image'));
+  postMediaFiles = files;
+  postMediaType = hasVideo ? 'video' : 'images';
+  // Render thumbs
+  files.forEach((file, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = "media-thumb";
+    let previewEl;
+    if (file.type.startsWith('image')) {
+      previewEl = document.createElement('img');
+      previewEl.src = URL.createObjectURL(file);
+    } else if (file.type.startsWith('video')) {
+      previewEl = document.createElement('video'); previewEl.controls = false; previewEl.src = URL.createObjectURL(file);
+    }
+    thumb.appendChild(previewEl);
+    const rm = document.createElement('button');
+    rm.className = "remove-thumb"; rm.innerText = "×";
+    rm.onclick = () => {
+      postMediaFiles.splice(i, 1); // Remove ith file and retrigger
+      renderMediaGallery();
+      // Also clear fileInput to flush input state
+      fileInput.value = '';
+    };
+    thumb.appendChild(rm);
+    gallery.appendChild(thumb);
+  });
 };
+function renderMediaGallery() {
+  gallery.innerHTML = "";
+  postMediaFiles.forEach((file, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = "media-thumb";
+    let previewEl;
+    if (file.type.startsWith('image')) {
+      previewEl = document.createElement('img');
+      previewEl.src = URL.createObjectURL(file);
+    } else if (file.type.startsWith('video')) {
+      previewEl = document.createElement('video'); previewEl.controls = false; previewEl.src = URL.createObjectURL(file);
+    }
+    thumb.appendChild(previewEl);
+    const rm = document.createElement('button');
+    rm.className = "remove-thumb"; rm.innerText = "×";
+    rm.onclick = () => {
+      postMediaFiles.splice(i, 1);
+      renderMediaGallery();
+      fileInput.value = '';
+    };
+    thumb.appendChild(rm);
+    gallery.appendChild(thumb);
+  });
+}
+// Youtube
 if(urlInput) urlInput.oninput = () => {
-  preview.innerHTML = ""; if(urlInput.value) fileInput.value=""; uploadedUrl = null; fileTypeHint = null;
+  gallery.innerHTML = ""; if(urlInput.value) fileInput.value=""; postMediaYoutubeUrl = '';
   const url = urlInput.value.trim();
-  if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
-    preview.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${toYoutubeEmbed(url)}' frameborder='0' allowfullscreen></iframe>`;
-    uploadedUrl = toYoutubeEmbed(url); fileTypeHint = "youtube";
+  if (url && (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("shorts/"))) {
+    gallery.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${toYoutubeEmbed(url)}' frameborder='0' allowfullscreen></iframe>`;
+    postMediaYoutubeUrl = toYoutubeEmbed(url);
+    postMediaType = "youtube";
+    postMediaFiles = [];
+    fileInput.value = '';
   }
 }
-function toYoutubeEmbed(url) {
-  if (!url) return url;
-  // Match any YouTube/Shorts link
-  // Try to extract video ID from regular, short, or shorts
-  let vid = url.match(/(?:v=|youtu.be\/|shorts\/)([\w-]{11})/);
-  if (!vid) return url;
-  return `https://www.youtube.com/embed/${vid[1]}`;
-}
+
 if(form) form.onsubmit = async (e) => {
   e.preventDefault();
-  // Ensure text or media is present
   const text = document.getElementById("post-text").value.trim();
   if (!text) { alert("Post text required"); return; }
-  let mediaUrl = uploadedUrl;
-  let mediaType = fileTypeHint;
-  if(!mediaUrl) { mediaType = "text"; }
-  // Author and stance
-  const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
-  const stance = session && session.variant ? session.variant : "mixed";
+  // Google: upload all files if present
+  let mediaUrls = [], mediaType = postMediaType;
   try {
-    await createPost({ text, mediaUrl, mediaType, author, stance });
-    modal.classList.add("hidden"); resetNewPostModal();
-    // re-render feed to show new post
-    const variant = localStorage.getItem("sod_variant") || "mixed";
-    renderFeed(variant);
-  } catch(e) {
-    alert("Failed to publish post: " + e.message);
-  }
+    if (postMediaFiles && postMediaFiles.length > 0) {
+      const uploads = postMediaFiles.map(f => uploadMediaFile(f, session.sessionId));
+      mediaUrls = await Promise.all(uploads);
+    } else if (postMediaYoutubeUrl) {
+      mediaUrls = [postMediaYoutubeUrl];
+      mediaType = "youtube";
+    }
+    if (mediaType === null) mediaType = "text";
+    // Author and stance
+    const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
+    const stance = session && session.variant ? session.variant : "mixed";
+    await createPost({ text, media: mediaUrls, mediaType, author, stance });
+    modal.classList.add("hidden");
+    // Reset UI
+    form.reset();
+    gallery.innerHTML = "";
+    postMediaFiles = []; postMediaYoutubeUrl = ''; postMediaType = null; fileInput.value=''; urlInput.value='';
+  } catch(e) { alert("Failed to publish post: " + e.message); }
 };
 
 function showIfLocal(id) {
@@ -519,5 +611,6 @@ if(adminForm) adminForm.onsubmit = async (e) => {
     alert("Failed to publish admin post: " + e.message);
   }
 };
+
 
 
