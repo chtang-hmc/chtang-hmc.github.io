@@ -33,6 +33,8 @@ async function showPosts(posts) {
       container.appendChild(await renderRepostCard(post));
     }
   }
+  // Update all visible .posttime spans now
+  updateVisibleTimes();
 }
 
 function h(tag, attrs = {}, ...children) {
@@ -93,29 +95,31 @@ function getPostTime(post) {
   if (post.createdAt && post.createdAt.toDate) {
     return post.createdAt.toDate();
   }
-  // static: fudge as 1 day old per static post index (will roughly order them)
-  if (post.__static && typeof window.__staticPostOffset === "number") {
+  if (post.createdAt && typeof post.createdAt === 'number') {
+    return new Date(post.createdAt);
+  }
+  if (post.__static && typeof window.__staticPostOffset === 'number') {
     return new Date(Date.now() - 86400000 * (window.__staticPostOffset++));
   }
-  return new Date();
+  return new Date(0); // Epoch fallback
 }
 function formatTimeAgo(date) {
   const now = new Date();
-  const s = Math.floor((now-date)/1000);
-  if (s < 30) return "Just now";
+  const s = Math.floor((now - date) / 1000);
+  if (s < 30) return 'Just now';
   if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
-  if (s < 172800) return `Yesterday`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 172800) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 function updateVisibleTimes() {
-  document.querySelectorAll(".posttime[data-timestamp]").forEach(el => {
-    const ts = Number(el.getAttribute("data-timestamp"));
+  document.querySelectorAll('.posttime[data-timestamp]').forEach(el => {
+    const ts = Number(el.getAttribute('data-timestamp'));
     if (!isNaN(ts)) el.textContent = formatTimeAgo(new Date(ts));
   });
 }
-setInterval(updateVisibleTimes, 60000);
+setInterval(updateVisibleTimes, 20000);
 window.__staticPostOffset = 1;
 
 async function renderPostCard(post) {
@@ -367,9 +371,9 @@ async function refreshComments(postId) {
 async function updateLikeRepostCounts(postId) {
   const { likeCount, repostCount } = await getPostLikeRepostCounts(postId);
   const likeCountSpan = document.getElementById(`likeCount_${postId}`);
-  if (likeCountSpan) likeCountSpan.innerText = likeCount>0 ? String(likeCount) : '';
+  if (likeCountSpan) likeCountSpan.innerText = likeCount !== undefined ? String(likeCount) : '0';
   const repostCountSpan = document.getElementById(`repostCount_${postId}`);
-  if (repostCountSpan) repostCountSpan.innerText = repostCount>0 ? String(repostCount) : '';
+  if (repostCountSpan) repostCountSpan.innerText = repostCount !== undefined ? String(repostCount) : '0';
 }
 
 async function main() {
