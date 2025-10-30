@@ -89,6 +89,35 @@ async function renderFeed(variant) {
   }
 }
 
+function getPostTime(post) {
+  if (post.createdAt && post.createdAt.toDate) {
+    return post.createdAt.toDate();
+  }
+  // static: fudge as 1 day old per static post index (will roughly order them)
+  if (post.__static && typeof window.__staticPostOffset === "number") {
+    return new Date(Date.now() - 86400000 * (window.__staticPostOffset++));
+  }
+  return new Date();
+}
+function formatTimeAgo(date) {
+  const now = new Date();
+  const s = Math.floor((now-date)/1000);
+  if (s < 30) return "Just now";
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  if (s < 172800) return `Yesterday`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function updateVisibleTimes() {
+  document.querySelectorAll(".posttime[data-timestamp]").forEach(el => {
+    const ts = Number(el.getAttribute("data-timestamp"));
+    if (!isNaN(ts)) el.textContent = formatTimeAgo(new Date(ts));
+  });
+}
+setInterval(updateVisibleTimes, 60000);
+window.__staticPostOffset = 1;
+
 async function renderPostCard(post) {
   const likedKey = `liked_${post.id}`;
   const repostedKey = `reposted_${post.id}`;
@@ -100,7 +129,8 @@ async function renderPostCard(post) {
   const avatar = h("div", { class: "avatar", title: displayNameFromAuthor(post.author) }, getInitials(post.author));
   const display = displayNameFromAuthor(post.author);
   const handle = handleFromAuthor(post.author);
-  const time = h("span", { class: "time" }, "· now");
+  const t = getPostTime(post);
+  const time = h("span", { class: "time posttime", "data-timestamp": t.getTime() }, formatTimeAgo(t));
 
   const card = h("div", { class: "card" },
     avatar,
