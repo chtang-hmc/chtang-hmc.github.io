@@ -5,6 +5,8 @@ import { startTimer, onTimerEnd } from "./timer.js";
 
 let session = null;
 let interactionsByPostId = {};
+// Add to global vars
+let repostedIds = []; // sessionStorage
 
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -33,12 +35,30 @@ function handleFromAuthor(author) {
   return "@" + author.toLowerCase();
 }
 
+function saveReposts() {
+  sessionStorage.setItem("sod_reposts", JSON.stringify(repostedIds));
+}
+function loadReposts() {
+  try {
+    return JSON.parse(sessionStorage.getItem("sod_reposts")) || [];
+  } catch { return []; }
+}
+
 async function renderFeed(variant) {
   const container = document.getElementById("feed");
   container.innerHTML = "";
   const posts = await loadPostsForVariant(variant);
+  repostedIds = loadReposts(); // load current session repost ids
+  // Normal posts
   for (const post of posts) {
     container.appendChild(await renderPostCard(post));
+  }
+  // Session-local reposts (fake cards at bottom)
+  for (const postId of repostedIds) {
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      container.appendChild(await renderRepostCard(post));
+    }
   }
 }
 
@@ -81,6 +101,37 @@ async function renderPostCard(post) {
   return card;
 }
 
+// Specialized repost rendering (quoted style)
+async function renderRepostCard(originalPost) {
+  // We'll use the session user as author
+  const youName = "You";
+  const youHandle = session && session.sessionId ? "@user_"+session.sessionId.substr(-6) : "@you";
+  const quoteCard = h("div", { class: "card", style: "margin-top:12px;margin-bottom:4px;background:#f7fafd;border:1.4px solid #e6ecf0;" },
+    h("div", { class: "avatar", style: "opacity:0.80;" }, getInitials(originalPost.author)),
+    h("div", { class: "content" },
+      h("div", { class: "meta" },
+        h("span", { class: "displayName" }, displayNameFromAuthor(originalPost.author)),
+        h("span", { class: "handle" }, handleFromAuthor(originalPost.author)),
+        h("span", { class: "time", style: "color:#2cbeff;padding-left:5px;" }, "· Reposted by you")
+      ),
+      h("div", { class: "text" }, originalPost.text || ""),
+      originalPost.mediaUrl ? mediaEl(originalPost) : null
+    )
+  );
+  const card = h("div", { class: "card repost-card" },
+    h("div", { class: "avatar", title: youName, style: "background:#b3b3b3;" }, youName.slice(0,2).toUpperCase()),
+    h("div", { class: "content" },
+      h("div", { class: "meta" },
+        h("span", { class: "displayName" }, youName),
+        h("span", { class: "handle" }, youHandle),
+        h("span", { class: "time", style: "color:#2cbeff;padding-left:5px;" }, "· Reposted by you")
+      ),
+      h("div", { style: "margin:8px 0 0 0;" }, quoteCard)
+    )
+  );
+  return card;
+}
+
 function mediaEl(post) {
   if (post.type === "video") {
     const v = h("video", { controls: true });
@@ -113,8 +164,8 @@ function likeBtn(postId, liked) {
   );
 }
 
+// Patch repostBtn to mutate repostedIds and re-render
 function repostBtn(postId, reposted) {
-  // Use retweet icon (unicode for now)
   return h(
     "button",
     {
@@ -128,6 +179,16 @@ function repostBtn(postId, reposted) {
         e.currentTarget.classList.toggle("active", next);
         sessionStorage.setItem(key, next ? "1" : "0");
         try { await writeInteraction(session.sessionId, postId, { reposted: next }); } catch {}
+        // Update session reposts & re-render feed
+        repostedIds = loadReposts();
+        if (next) {
+          if (!repostedIds.includes(postId)) repostedIds.push(postId);
+        } else {
+          repostedIds = repostedIds.filter(id => id !== postId);
+        }
+        saveReposts();
+        const variant = localStorage.getItem("sod_variant") || "mixed";
+        renderFeed(variant);
       },
     },
     reposted ? "🔁 Repost" : "⤴ Repost"

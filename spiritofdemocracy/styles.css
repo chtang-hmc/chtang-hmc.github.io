@@ -207,6 +207,21 @@ input[type="text"]:focus {
   border-color: #1d9bf0;
   outline: none;
 }
+/* Additional styling for repost-card */
+.repost-card {
+  margin-top: 22px !important;
+  margin-bottom: 8px;
+  border: 2px solid #b4dfff;
+  background: #f6fbff;
+  box-shadow: 0 2px 20px 0 rgba(29,155,209,0.09);
+  position: relative;
+}
+.repost-card .card {
+  margin: 0 !important;
+  box-shadow: none !important;
+  background: #fff !important;
+  border: 1.2px solid #e6ecf0 !important;
+}
 @media (max-width: 700px) {
   .feed { padding-left: 2vw; padding-right: 2vw; }
 }
