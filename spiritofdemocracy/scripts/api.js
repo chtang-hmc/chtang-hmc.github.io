@@ -72,39 +72,16 @@ export async function loadAllInteractions(sessionId) {
 export async function uploadMediaFile(file, sessionId, progressCb) {
   if (!file) throw new Error('No file');
   if (file.size > 15 * 1024 * 1024) throw new Error('File too large (max 15MB)');
-
   const contentType = file.type;
   const ext = file.name.split('.').pop() || '';
   const filename = `media_${Date.now()}.${ext}`;
   const storage = getStorage();
   const path = `uploads/${sessionId}/${filename}`;
   const fileRef = storageRef(storage, path);
-
-  // Properly handle resumable upload
-  const uploadTask = uploadBytesResumable(fileRef, file, { contentType });
-
-  return new Promise((resolve, reject) => {
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        if (progressCb) {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          progressCb(progress);
-        }
-      },
-      (error) => reject(error),
-      async () => {
-        try {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve(url);
-        } catch (err) {
-          reject(err);
-        }
-      }
-    );
-  });
+  // Upload with progress (optional)
+  await uploadBytesResumable(fileRef, file, { contentType });
+  return await getDownloadURL(fileRef);
 }
-
 
 export async function createPost({text, mediaType, mediaUrl, author, stance}) {
   const coll = collection(db, "posts");
