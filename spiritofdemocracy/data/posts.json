@@ -3,25 +3,17 @@
     "id": "p1",
     "stance": "pro",
     "type": "text",
-    "text": "Returning cultural artefacts honors history and fosters global trust.",
+    "text": "The world belongs to all — not just those who conquered first.",
     "mediaUrl": "",
-    "author": "heritage_voice"
+    "author": "justice_quotes"
   },
   {
     "id": "p2",
-    "stance": "against",
-    "type": "image",
-    "text": "World-class preservation ensures access for everyone.",
-    "mediaUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/British_Museum_from_NE_2.JPG/640px-British_Museum_from_NE_2.JPG",
-    "author": "museum_advocate"
-  },
-  {
-    "id": "p3",
     "stance": "pro",
-    "type": "video",
-    "text": "Communities should tell their own stories, where the artefacts belong.",
-    "mediaUrl": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    "author": "culture_first"
+    "type": "text",
+    "text": "History in fragments can’t teach the whole truth.",
+    "mediaUrl": "",
+    "author": "historians_unite"
   }
 ]
 

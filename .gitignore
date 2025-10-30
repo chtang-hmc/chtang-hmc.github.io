@@ -13,6 +13,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Cursor
+.cursor/
+workflow.md
+
 # Env files
 .env
 .env.*

@@ -9,7 +9,7 @@ const db = getFirestore();
 // Use Vertex AI with Application Default Credentials (ADC)
 // Ensure the Vertex AI API is enabled and billing is active in your GCP project
 const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || process.env.PROJECT_ID;
-const LOCATION = process.env.VERTEX_LOCATION || "us-central1";
+const LOCATION = process.env.VERTEX_LOCATION || "us-east1";
 const vertex = new VertexAI({ project: PROJECT_ID, location: LOCATION });
 
 export const generateComments = onCall(async (request: CallableRequest<any>) => {
@@ -41,7 +41,8 @@ export const generateComments = onCall(async (request: CallableRequest<any>) => 
     // but we avoid trusting client data. We simply craft a neutral prompt.
   }
 
-  const model = vertex.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Use an explicit version to avoid alias-access issues
+  const model = vertex.getGenerativeModel({ model: "gemini-1.5-flash-001" });
   const stance = postSnap.exists ? (postSnap.get("stance") as string) : "mixed";
   const text = postSnap.exists ? (postSnap.get("text") as string) : "";
 
