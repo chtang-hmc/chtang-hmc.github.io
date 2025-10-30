@@ -10,7 +10,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyA9XprCjXcBfwWpkfr6a3utIwwClX8H_dc",
     authDomain: "spiritofdemocracy-5f1b4.firebaseapp.com",
     projectId: "spiritofdemocracy-5f1b4",
-    storageBucket: "spiritofdemocracy-5f1b4.firebasestorage.app",
+    storageBucket: "spiritofdemocracy-5f1b4.appspot.com",
     messagingSenderId: "723775992949",
     appId: "1:723775992949:web:0057e1081653ede700343c",
     measurementId: "G-EKRPZ9914K"
