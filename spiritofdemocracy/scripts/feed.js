@@ -49,6 +49,57 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+// Media URL helpers
+function toYoutubeEmbed(url) {
+  try {
+    const u = new URL(url);
+    // youtu.be/<id>
+    if (u.hostname.includes('youtu.be')) {
+      const id = u.pathname.split('/').filter(Boolean)[0];
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    // youtube.com/shorts/<id>
+    if (u.pathname.startsWith('/shorts/')) {
+      const id = u.pathname.split('/')[2];
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    // youtube.com/watch?v=<id>
+    const v = u.searchParams.get('v');
+    if (v) return `https://www.youtube.com/embed/${v}`;
+    // Fallback: if already embed or /live etc., pass through
+    if (u.hostname.includes('youtube.com')) return url;
+  } catch {}
+  return url;
+}
+
+function toTikTokEmbed(url) {
+  try {
+    const u = new URL(url);
+    // https://www.tiktok.com/@user/video/<id>
+    const parts = u.pathname.split('/').filter(Boolean);
+    const idx = parts.indexOf('video');
+    if (idx !== -1 && parts[idx + 1]) {
+      const id = parts[idx + 1];
+      return `https://www.tiktok.com/embed/v2/${id}`;
+    }
+  } catch {}
+  return url;
+}
+
+function toInstagramEmbed(url) {
+  try {
+    const u = new URL(url);
+    // support /p/<code>, /reel/<code>, /tv/<code>
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (parts.length >= 2 && (parts[0] === 'p' || parts[0] === 'reel' || parts[0] === 'tv')) {
+      const type = parts[0];
+      const code = parts[1];
+      return `https://www.instagram.com/${type}/${code}/embed`;
+    }
+  } catch {}
+  return url;
+}
+
 function getInitials(author) {
   if (!author || typeof author !== "string") return "?";
   return author.trim().slice(0, 2).toUpperCase();
@@ -268,6 +319,26 @@ function mediaEl(post) {
       f.src = post.media[0];
       f.width = "100%";
       f.style = "aspect-ratio:16/9;border-radius:12px;border:1.5px solid #e6ecf0;";
+      f.setAttribute('frameborder', '0');
+      f.setAttribute('allowfullscreen', 'true');
+      return f;
+    }
+    // TikTok (single)
+    if (post.mediaType === "tiktok" && post.media.length === 1) {
+      const f = document.createElement("iframe");
+      f.src = post.media[0];
+      f.width = "100%";
+      f.style = "aspect-ratio:9/16;border-radius:12px;border:1.5px solid #e6ecf0;";
+      f.setAttribute('frameborder', '0');
+      f.setAttribute('allowfullscreen', 'true');
+      return f;
+    }
+    // Instagram (single)
+    if (post.mediaType === "instagram" && post.media.length === 1) {
+      const f = document.createElement("iframe");
+      f.src = post.media[0];
+      f.width = "100%";
+      f.style = "aspect-ratio:1/1;border-radius:12px;border:1.5px solid #e6ecf0;";
       f.setAttribute('frameborder', '0');
       f.setAttribute('allowfullscreen', 'true');
       return f;
@@ -668,13 +739,29 @@ function renderMediaGallery() {
 if(urlInput) urlInput.oninput = () => {
   gallery.innerHTML = ""; if(urlInput.value) fileInput.value=""; postMediaYoutubeUrl = '';
   const url = urlInput.value.trim();
-  if (url && (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("shorts/"))) {
-    gallery.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${toYoutubeEmbed(url)}' frameborder='0' allowfullscreen></iframe>`;
-    postMediaYoutubeUrl = toYoutubeEmbed(url);
+  if (!url) return;
+  if (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("shorts/")) {
+    const src = toYoutubeEmbed(url);
+    gallery.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${src}' frameborder='0' allowfullscreen></iframe>`;
+    postMediaYoutubeUrl = src; // reuse variable to hold any embed URL
     postMediaType = "youtube";
-    postMediaFiles = [];
-    fileInput.value = '';
+  } else if (url.includes("tiktok.com")) {
+    const src = toTikTokEmbed(url);
+    gallery.innerHTML = `<iframe width='98%' style='aspect-ratio:9/16;border-radius:12px;border:1.5px solid #bde7fa;' src='${src}' frameborder='0' allowfullscreen></iframe>`;
+    postMediaYoutubeUrl = src;
+    postMediaType = "tiktok";
+  } else if (url.includes("instagram.com")) {
+    const src = toInstagramEmbed(url);
+    gallery.innerHTML = `<iframe width='98%' style='aspect-ratio:1/1;border-radius:12px;border:1.5px solid #bde7fa;' src='${src}' frameborder='0' allowfullscreen></iframe>`;
+    postMediaYoutubeUrl = src;
+    postMediaType = "instagram";
+  } else {
+    // Unknown URL - clear embed
+    postMediaYoutubeUrl = '';
+    postMediaType = null;
   }
+  postMediaFiles = [];
+  fileInput.value = '';
 }
 
 if(form) form.onsubmit = async (e) => {
@@ -762,9 +849,19 @@ if (adminFile) adminFile.onchange = async (e) => {
 if (adminUrl) adminUrl.oninput = () => {
   adminPrev.innerHTML = ""; if(adminUrl.value) adminFile.value=""; adminUploadUrl = null; adminFileType = null;
   const url = adminUrl.value.trim();
-  if (url && (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("shorts/"))) {
-    adminPrev.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${toYoutubeEmbed(url)}' frameborder='0' allowfullscreen></iframe>`;
-    adminUploadUrl = toYoutubeEmbed(url); adminFileType = "youtube";
+  if (!url) return;
+  if (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("shorts/")) {
+    const src = toYoutubeEmbed(url);
+    adminPrev.innerHTML = `<iframe width='98%' style='aspect-ratio:16/9;border-radius:12px;border:1.5px solid #bde7fa;' src='${src}' frameborder='0' allowfullscreen></iframe>`;
+    adminUploadUrl = src; adminFileType = "youtube";
+  } else if (url.includes("tiktok.com")) {
+    const src = toTikTokEmbed(url);
+    adminPrev.innerHTML = `<iframe width='98%' style='aspect-ratio:9/16;border-radius:12px;border:1.5px solid #bde7fa;' src='${src}' frameborder='0' allowfullscreen></iframe>`;
+    adminUploadUrl = src; adminFileType = "tiktok";
+  } else if (url.includes("instagram.com")) {
+    const src = toInstagramEmbed(url);
+    adminPrev.innerHTML = `<iframe width='98%' style='aspect-ratio:1/1;border-radius:12px;border:1.5px solid #bde7fa;' src='${src}' frameborder='0' allowfullscreen></iframe>`;
+    adminUploadUrl = src; adminFileType = "instagram";
   }
 }
 if(adminForm) adminForm.onsubmit = async (e) => {
