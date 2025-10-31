@@ -463,6 +463,34 @@ async function updateLikeRepostCounts(postId) {
   if (repostCountSpan) repostCountSpan.innerText = repostCount !== undefined ? String(repostCount) : '0';
 }
 
+// Admin mode functions
+function isAdminMode() {
+  return localStorage.getItem("sod_admin_mode") === "true";
+}
+
+function setAdminMode(enabled) {
+  localStorage.setItem("sod_admin_mode", enabled ? "true" : "false");
+  updateAdminModeUI();
+}
+
+function updateAdminModeUI() {
+  const adminFields = document.getElementById("admin-post-fields");
+  const adminFAB = document.getElementById("fab-admin-post");
+  const adminModeToggle = document.getElementById("toggle-admin-mode");
+  
+  if (adminModeToggle) {
+    adminModeToggle.checked = isAdminMode();
+  }
+  
+  if (adminFields) {
+    adminFields.style.display = isAdminMode() ? "block" : "none";
+  }
+  
+  if (adminFAB) {
+    adminFAB.style.display = (isAdminMode() || location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "flex" : "none";
+  }
+}
+
 async function main() {
   const variant = resolveVariant();
   applyRoute(variant);
@@ -475,6 +503,27 @@ async function main() {
     const modal = document.getElementById("poll-modal");
     modal.classList.remove("hidden");
   });
+  
+  // Initialize admin mode UI
+  updateAdminModeUI();
+  
+  // Settings modal handlers
+  const settingsBtn = document.getElementById("settings-btn");
+  const settingsModal = document.getElementById("settings-modal");
+  const settingsClose = document.getElementById("settings-close");
+  const adminModeToggle = document.getElementById("toggle-admin-mode");
+  
+  if (settingsBtn && settingsModal) {
+    settingsBtn.onclick = () => settingsModal.classList.remove("hidden");
+  }
+  if (settingsClose && settingsModal) {
+    settingsClose.onclick = () => settingsModal.classList.add("hidden");
+  }
+  if (adminModeToggle) {
+    adminModeToggle.onchange = (e) => {
+      setAdminMode(e.target.checked);
+    };
+  }
 }
 
 window.addEventListener("DOMContentLoaded", main);
@@ -500,7 +549,16 @@ const errorDiv = document.getElementById("post-modal-error");
 function clearPostModalError() { if (errorDiv) errorDiv.innerText = ""; }
 function showPostModalError(msg) { if (errorDiv) errorDiv.innerText = msg; }
 
-if(FAB) FAB.onclick = () => { modal.classList.remove("hidden"); };
+if(FAB) FAB.onclick = () => { 
+  modal.classList.remove("hidden");
+  // Reset admin fields when opening modal
+  if (isAdminMode()) {
+    const authorInput = document.getElementById("post-author");
+    const stanceSelect = document.getElementById("post-stance");
+    if (authorInput) authorInput.value = "";
+    if (stanceSelect) stanceSelect.value = session && session.variant ? session.variant : "mixed";
+  }
+};
 if (closeBtn) closeBtn.onclick = () => { modal.classList.add("hidden"); clearPostModalError(); resetNewPostModal(); };
 function resetNewPostModal() {
   form.reset(); preview.innerHTML = ""; fileInput.value = ""; urlInput.value = ""; uploadedUrl = null; fileTypeHint = null;
@@ -643,8 +701,17 @@ if(form) form.onsubmit = async (e) => {
       mediaType = "youtube";
     }
     if (mediaType === null && !validMedia) mediaType = "text";
-    const author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
-    const stance = session && session.variant ? session.variant : "mixed";
+    // Use admin mode fields if enabled, otherwise use session defaults
+    let author, stance;
+    if (isAdminMode()) {
+      const authorInput = document.getElementById("post-author");
+      const stanceSelect = document.getElementById("post-stance");
+      author = (authorInput && authorInput.value.trim()) || (session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon");
+      stance = (stanceSelect && stanceSelect.value) || (session && session.variant ? session.variant : "mixed");
+    } else {
+      author = session && session.sessionId ? `user_${session.sessionId.substr(-6)}` : "anon";
+      stance = session && session.variant ? session.variant : "mixed";
+    }
     await createPost({ text, media: mediaUrls, mediaType, author, stance });
     modal.classList.add("hidden");
     form.reset();
@@ -659,7 +726,7 @@ function showIfLocal(id) {
     const el = document.getElementById(id); if (el) el.style.display = "flex";
   }
 }
-showIfLocal("fab-admin-post");
+// Admin post button now controlled by admin mode or localhost (see updateAdminModeUI)
 // Admin post modal logic
 const adminFAB = document.getElementById("fab-admin-post");
 const adminModal = document.getElementById("modal-admin-post");

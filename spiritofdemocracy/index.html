@@ -51,6 +51,17 @@
     <div class="modal-content" style="max-width:520px;">
       <h2 style="margin-bottom:0;font-size:1.25em;color:#1d9bf0;font-weight:700;">New Post</h2>
       <form id="new-post-form">
+        <div id="admin-post-fields" style="display:none;margin-bottom:12px;">
+          <div style="display:flex;gap:8px;align-items:baseline;margin:8px 0 2px 0;">
+            <input id="post-author" type="text" placeholder="Username…" style="flex:1;border-radius:8px;border:1.5px solid #d0dbe6;font-size:1em;padding:6px 8px;">
+            <select id="post-stance" style="border-radius:8px;border:1.5px solid #d0dbe6;font-size:.98em;padding:6px 8px;">
+              <option value="pro">PRO</option>
+              <option value="against">AGAINST</option>
+              <option value="mixed">MIXED</option>
+              <option value="neutral">NEUTRAL</option>
+            </select>
+          </div>
+        </div>
         <label for="post-text" style="display:block;margin:.9em 0 .15em;font-weight:500;">What's happening?</label>
         <textarea id="post-text" rows="3" maxlength="420" required placeholder="Write your tweet…" style="width:100%;font-size:1.15em;border-radius:12px;padding:10px;border:1.5px solid #d0dbe6;resize:vertical;"></textarea>
         <div style="margin-top:10px;">
@@ -113,6 +124,9 @@
       <h2 style="margin-bottom:10px;font-size:1.1em;">Settings</h2>
       <label style="font-size:17px;font-weight:500;margin-top:10px;display:flex;align-items:center;gap:12px;">
         <input type="checkbox" id="toggle-timer" style="width:22px;height:22px;" checked> Timer enabled
+      </label>
+      <label style="font-size:17px;font-weight:500;margin-top:15px;display:flex;align-items:center;gap:12px;">
+        <input type="checkbox" id="toggle-admin-mode" style="width:22px;height:22px;"> Admin mode (choose username & stance)
       </label>
       <div class="modal-actions" style="margin-top:24px;justify-content:center;">
         <button type="button" id="settings-close" class="btn">Close</button>
