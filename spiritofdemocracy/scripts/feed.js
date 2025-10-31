@@ -293,7 +293,7 @@ function mediaEl(post) {
   // Prefer new media array
   if (post.media && Array.isArray(post.media) && post.media.length > 0) {
     // Images (1-4)
-    if (post.mediaType === "images" || (post.mediaType === "gif" && post.media.length > 0)) {
+    if (post.mediaType === "images" || post.mediaType === "image" || (post.mediaType === "gif" && post.media.length > 0)) {
       const grid = document.createElement("div");
       grid.className = "feed-gallery";
       post.media.slice(0,4).forEach(url => {
