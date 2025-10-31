@@ -83,7 +83,7 @@ async function onSubmitPoll(e) {
   const modal = document.getElementById("poll-modal");
   modal.classList.add("hidden");
   disableInteractions();
-  setTimeout(() => { window.location.href = "./thanks.html"; }, 300);
+  setTimeout(() => { window.location.href = "./thanks.html"; }, 60);
 }
 
 function disableInteractions() {
