@@ -109,8 +109,10 @@ body {
 }
 .media img, .media video {
   width: 100%;
+  height: auto;
   display: block;
-  aspect-ratio: 16/9;
+  object-fit: contain;
+  max-height: 70vh;
 }
 .actions {
   display: flex;
@@ -293,7 +295,7 @@ input[type="text"]:focus {
 .feed-gallery .gallery-img {
   border-radius: 12px;
   width: 100%;
-  aspect-ratio: 1/1;
+  height: auto;
   object-fit: cover;
   background: #f7f9fa;
   transition: box-shadow 0.13s;
